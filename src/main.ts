@@ -23,7 +23,7 @@ async function boot() {
 
   const { renderer, backend } = await createRenderer(stage);
   const scene = new Scene();
-  const { camera, target } = createCamera(window.innerWidth / window.innerHeight);
+  const { camera, target, update: updateCamera } = createCamera(window.innerWidth / window.innerHeight);
   const sky = createSky(scene, renderer);
 
   const board = createBoard(LOOK.board.size);
@@ -47,7 +47,8 @@ async function boot() {
   let lastStat = performance.now();
 
   renderer.setAnimationLoop(() => {
-    tickClock();
+    const dt = tickClock();
+    updateCamera(dt);
     diorama.update(simTime.value, camera);
     post.pipeline.render();
 
@@ -63,7 +64,7 @@ async function boot() {
       statsEl.textContent =
         `${backend.toUpperCase()}  ${state.fps.toFixed(0)} fps\n` +
         `${renderer.domElement.width}×${renderer.domElement.height}  ${info.drawCalls} draws  ${(info.triangles / 1000).toFixed(0)}k tris` +
-        (pinnedTime === null ? '' : `\nt pinned ${pinnedTime}s`);
+        (pinnedTime === null ? '\n← → spin   ↑ ↓ tilt' : `\nt pinned ${pinnedTime}s`);
     }
   });
 }

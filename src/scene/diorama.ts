@@ -104,7 +104,8 @@ export async function buildDiorama(scene: Scene, board: Board) {
   board.uniforms.sonarCenter.value.set(subPos.x, subPos.z + 0.2);
   board.uniforms.sonarRadius.value = 2.1;
 
-  root.add(createBoardLabels(board.size));
+  const labels = createBoardLabels(board.size);
+  root.add(labels.group);
 
   const BLAST_PERIOD = 4.5;
   const tmp = new Vector3();
@@ -118,6 +119,7 @@ export async function buildDiorama(scene: Scene, board: Board) {
       f.obj.rotation.set((f.roll ?? 0) + sz * 1.6 * f.bob, f.yaw, (f.pitch ?? 0) - sx * 1.6 * f.bob, 'YXZ');
     }
     sign.update(camera, t);
+    labels.update(camera);
     const age = t % BLAST_PERIOD;
     boom.age.value = age;
     boom.update();

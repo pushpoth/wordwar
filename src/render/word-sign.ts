@@ -1,6 +1,6 @@
 import {
   CanvasTexture, Group, Mesh, MeshBasicNodeMaterial, MeshStandardNodeMaterial, PlaneGeometry, SRGBColorSpace,
-  type Camera, type Vector3,
+  Vector3, type Camera,
 } from 'three/webgpu';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { float, max, mix, sin, smoothstep, texture, uniform, uv, vec3, vec4 } from 'three/tsl';
@@ -76,13 +76,39 @@ export function createWordSign(word: string) {
     tiles.push(tile);
   });
 
+  let slots: Vector3[] = [];
+  let baseY = 1.15;
+  let reversed = false;
+
   /** Place one letter above each ship cell, at `height` over the water. */
   function place(cells: Vector3[], height = 1.15) {
+    slots = cells.map((c) => c.clone());
+    baseY = height;
+    layout();
+  }
+
+  function layout() {
+    const n = tiles.length;
     tiles.forEach((t, i) => {
-      const c = cells[Math.min(i, cells.length - 1)];
-      t.position.set(c.x, height, c.z);
-      t.userData.baseY = height;
+      const c = slots[Math.min(reversed ? n - 1 - i : i, slots.length - 1)];
+      t.position.x = c.x;
+      t.position.z = c.z;
     });
+  }
+
+  /** The word must read left to right on screen from any orbit angle. */
+  const pa = new Vector3();
+  const pb = new Vector3();
+  function readingDirection(camera: Camera) {
+    if (slots.length < 2) return;
+    pa.copy(slots[0]).project(camera);
+    pb.copy(slots[slots.length - 1]).project(camera);
+    const dx = pb.x - pa.x;
+    // Hysteresis so a ship seen end-on doesn't flicker between orders.
+    if (reversed ? dx > 0.02 : dx < -0.02) {
+      reversed = !reversed;
+      layout();
+    }
   }
 
   function setRevealed(mask: boolean[]) {
@@ -90,9 +116,10 @@ export function createWordSign(word: string) {
   }
 
   function update(camera: Camera, t: number) {
+    readingDirection(camera);
     tiles.forEach((tile, i) => {
       tile.quaternion.copy(camera.quaternion);
-      tile.position.y = tile.userData.baseY + Math.sin(t * 1.7 + i * 0.6) * 0.035;
+      tile.position.y = baseY + Math.sin(t * 1.7 + i * 0.6) * 0.035;
     });
   }
 

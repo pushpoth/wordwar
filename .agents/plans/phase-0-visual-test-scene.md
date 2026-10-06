@@ -48,7 +48,7 @@ renderer.
 7. ✅ Board grid, X tiles and sonar ring.
 8. ✅ Word billboard.
 9. ✅ Explosion effect.
-10. Renderer comparison: run the scene on both the WebGPU and the WebGL2
+10. ✅ Renderer comparison: run the scene on both the WebGPU and the WebGL2
     backend, then record the winner in `decisions.md`.
 
 ## Done when

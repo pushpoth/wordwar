@@ -31,7 +31,7 @@ Append-only. Close an entry by changing its status; never delete one.
   scriptable so the agent can build and rebuild assets reproducibly.
 
 ## 2026-10-06 · Renderer choice deferred to the phase 0 test scene
-- **Status:** open
+- **Status:** closed by the next entry
 - **Decision:** Build the phase 0 scene on three.js `WebGPURenderer` (TSL
   shaders), which also runs on a WebGL2 backend. Compare both backends on
   quality, frame rate and headless screenshots, then record the winner here.
@@ -42,3 +42,13 @@ Append-only. Close an entry by changing its status; never delete one.
   render layer, effects, HUD and asset pipeline from scratch.
 - **Why:** The engine is deterministic, tested and independent of graphics. The
   rendering is the part being reimagined.
+
+## 2026-10-06 · WebGPU is the renderer; WebGL 2 stays as the fallback
+- **Status:** active
+- **Decision:** Ship on `WebGPURenderer` with its WebGPU backend; keep the
+  WebGL 2 backend only for browsers without WebGPU and for headless screenshots.
+- **Why:** Measured by the user on the dev machine (AMD Hawk Point iGPU), same
+  scene (343 draws, 381k triangles): WebGPU held about 56 fps; WebGL 2
+  averaged about 25 fps, peaking near 50. The look was the same; models
+  jittered slightly. 56 fps is still under the 60 fps target, so draw calls
+  (many multi-material meshes) are the first optimisation to make.

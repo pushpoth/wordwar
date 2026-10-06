@@ -7,13 +7,19 @@ diorama renders end to end on `WebGPURenderer` (sky, Gerstner ocean with the
 board painted into it, six Blender-built models, word billboard, looping
 explosion, depth of field, bloom, grade, SMAA). Run `npm run dev` (port 5190),
 `npm run models` to rebuild assets, `npm run screenshot` for review shots
-(`--t` pins time, `--query view=close|ship` changes framing).
+(`--t` pins time; `--query` takes `view=close|ship`, `az=<deg>`, `el=<deg>`).
+In the browser, the arrow keys orbit and tilt the camera.
 
 Open in phase 0:
-- **Renderer comparison and the 60 fps check on a real GPU** haven't been done.
-  Headless screenshots use software WebGL, so they prove nothing about speed.
-  Open the page on the dev machine, read the fps overlay with and without
-  `?backend=webgl`, and record the result in `decisions.md`.
+- **Frame rate:** WebGPU holds about 56 fps on the dev machine (target 60);
+  see `decisions.md`. Cut draw calls before adding more scenery.
+- **User review notes (2026-10-06), in the order agreed:**
+  1. ship and submarine buoyancy (hulls ride the swell; sea state sets how
+     hard they move; only sinking ships go under), wakes and hull weathering;
+  2. islands about 20% bigger with more detail;
+  3. surf that runs up the island shores, instead of circular foam rings;
+  4. softer white smoke and a denser, bigger fire for a giant-blast-from-afar read;
+  5. sharp billboard letters (they're blurred by depth of field and the glyph glow).
 - **Deploys:** `npm run deploy:preview` builds locally and uploads a preview
   to the `wordwar` Vercel project (team `pushpoth`). Preview URLs need a
   Vercel login; the public production alias is https://wordwar-pi.vercel.app.

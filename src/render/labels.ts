@@ -1,4 +1,4 @@
-import { CanvasTexture, Group, Mesh, MeshBasicNodeMaterial, PlaneGeometry, SRGBColorSpace } from 'three/webgpu';
+import { CanvasTexture, Group, Mesh, MeshBasicNodeMaterial, PlaneGeometry, SRGBColorSpace, type Camera } from 'three/webgpu';
 import { texture, vec4 } from 'three/tsl';
 
 const COLUMNS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
@@ -22,7 +22,7 @@ function labelTexture(text: string) {
 
 /**
  * Column letters along the far edge and row numbers down the left edge,
- * floating just above the water and tilted up toward the camera.
+ * floating just above the water and turned to face the camera.
  */
 export function createBoardLabels(size: number) {
   const group = new Group();
@@ -36,7 +36,6 @@ export function createBoardLabels(size: number) {
     m.opacityNode = tex.a.mul(0.92);
     const mesh = new Mesh(geo, m);
     mesh.position.set(x, 0.22, z);
-    mesh.rotation.x = -Math.PI / 2 + 0.75;
     mesh.renderOrder = 1;
     group.add(mesh);
   };
@@ -44,5 +43,10 @@ export function createBoardLabels(size: number) {
     add(COLUMNS[i], i - half + 0.5, -half - 0.55);
     add(String(i + 1), -half - 0.6, i - half + 0.5);
   }
-  return group;
+  /** Face the camera from any orbit angle (yaw and pitch, no roll). */
+  function update(camera: Camera) {
+    for (const m of group.children) m.quaternion.copy(camera.quaternion);
+  }
+
+  return { group, update };
 }
