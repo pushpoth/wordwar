@@ -13,13 +13,18 @@ In the browser, the arrow keys orbit and tilt the camera.
 Open in phase 0:
 - **Frame rate:** WebGPU holds about 56 fps on the dev machine (target 60);
   see `decisions.md`. Cut draw calls before adding more scenery.
-- **User review notes (2026-10-06), in the order agreed:**
-  1. ship and submarine buoyancy (hulls ride the swell; sea state sets how
-     hard they move; only sinking ships go under), wakes and hull weathering;
-  2. islands about 20% bigger with more detail;
-  3. surf that runs up the island shores, instead of circular foam rings;
-  4. softer white smoke and a denser, bigger fire for a giant-blast-from-afar read;
-  5. sharp billboard letters (they're blurred by depth of field and the glyph glow).
+- **User review notes (2026-10-06)** are addressed, waiting on the next review:
+  buoyancy fitted to bow, stern and beam samples with short waves calmed under
+  hulls (`src/scene/buoyancy.ts`, `src/render/hulls.ts`), sea state via
+  `LOOK.seaState` or `?sea=`; contact foam and a short Kelvin wake; procedural
+  weathering (`src/render/weathering.ts`); islands 20% bigger with strata and
+  patchy grass; elliptical shorelines with inward surf and beach run-up; a
+  denser blast; crisp billboard glyphs.
+- **Frame-rate risk:** this round added particles (about 600 sprites), island
+  triangles (about 44k across three models) and per-pixel hull and island
+  loops in the water shader. Re-measure on the dev machine before adding more.
+- **Known gaps:** the sun glare at low camera angles blows out to white; the
+  sub's wake is straight while its path curves; weathering reads as dots up close.
 - **Deploys:** `npm run deploy:preview` builds locally and uploads a preview
   to the `wordwar` Vercel project (team `pushpoth`). Preview URLs need a
   Vercel login; the public production alias is https://wordwar-pi.vercel.app.

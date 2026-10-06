@@ -69,6 +69,7 @@ export function createExplosion(seed = 1) {
     const alive = a.greaterThan(0).select(float(1), float(0)).mul(t.lessThan(1).select(float(1), float(0)));
     return { a, t, alive };
   };
+  const gauss = () => uv().sub(0.5).length().mul(2).mul(-2.2).mul(uv().sub(0.5).length().mul(2)).exp().sub(0.11).max(0).div(0.89);
   const softDisc = (seedNode: N1, sharp = 1) => {
     const d = uv().sub(0.5).length().mul(2);
     const n = mx_noise_float(vec3(uv().mul(3.2), seedNode.mul(17))).mul(0.35);
@@ -97,10 +98,10 @@ export function createExplosion(seed = 1) {
 
   // Smoke plume: slow, rising, expanding, dark grey lit orange early on.
   sprites({
-    count: 42,
+    count: 64,
     spawn: (r) => {
       const d = unitDir(r, 0.55);
-      const sp = 0.25 + r() * 0.55;
+      const sp = 0.3 + r() * 0.65;
       return { v: [d[0] * sp, 0.55 + r() * 0.75, d[2] * sp], delay: 0.1 + r() * 1.1, life: 2.8 + r() * 1.6, size: 0.5 + r() * 0.45 };
     },
   }, 'normal', ({ a, t, vel, par }) => {
@@ -115,28 +116,32 @@ export function createExplosion(seed = 1) {
 
   // Water column: white spray thrown up and falling back.
   sprites({
-    count: 44,
+    count: 140,
     spawn: (r) => {
       const d = unitDir(r, 0.9);
-      const sp = 1.6 + r() * 2.0;
-      return { v: [d[0] * sp * 0.22, d[1] * sp, d[2] * sp * 0.22], delay: 0.05 + r() * 0.12, life: 1.0 + r() * 0.5, size: 0.08 + r() * 0.12 };
+      const sp = 1.8 + r() * 2.4;
+      return { v: [d[0] * sp * 0.25, d[1] * sp, d[2] * sp * 0.25], delay: 0.04 + r() * 0.14, life: 0.9 + r() * 0.6, size: 0.03 + r() * 0.06 };
     },
   }, 'normal', ({ a, t, vel, par }) => {
     const pos = vel.mul(a).add(gravity.mul(a.mul(a).mul(0.5)));
     const size = par.z.mul(t.mul(1.5).add(0.7));
     const color = vec3(0.86, 0.93, 0.97);
-    const alpha = smoothstep(1.0, 0.5, t).mul(0.7).mul(softDisc(par.w, 1.4)).mul(pos.y.greaterThan(-0.05).select(float(1), float(0)));
+    const alpha = smoothstep(1.0, 0.5, t).mul(0.8).mul(gauss()).mul(pos.y.greaterThan(-0.05).select(float(1), float(0)));
     return { pos, size, color, alpha };
   });
 
   // Fireball: noisy heat ramp per puff — yellow-white core, orange body,
   // deep red rim and sooty edges. Normal blending keeps the colour saturated.
   sprites({
-    count: 46,
+    count: 120,
     spawn: (r) => {
       const d = unitDir(r, 0.35);
-      const sp = 0.45 + r() * 1.2;
-      return { v: [d[0] * sp, d[1] * sp * 0.9 + 0.35, d[2] * sp], delay: r() * 0.1, life: 0.8 + r() * 0.7, size: 0.32 + r() * 0.4 };
+      const second = r() < 0.3;
+      const sp = (0.55 + r() * 1.5) * (second ? 0.7 : 1);
+      return {
+        v: [d[0] * sp, d[1] * sp * 0.9 + 0.4, d[2] * sp],
+        delay: second ? 0.18 + r() * 0.25 : r() * 0.1, life: 0.8 + r() * 0.8, size: 0.3 + r() * 0.42,
+      };
     },
   }, 'normal', ({ a, t, vel, par }) => {
     const drag = float(1).sub(a.mul(-2.4).exp()).div(2.4);
@@ -156,10 +161,10 @@ export function createExplosion(seed = 1) {
 
   // Embers: fast, falling, tiny additive sparks.
   sprites({
-    count: 80,
+    count: 220,
     spawn: (r) => {
       const d = unitDir(r, 0.3);
-      const sp = 2.0 + r() * 3.2;
+      const sp = 2.0 + r() * 3.8;
       return { v: [d[0] * sp, d[1] * sp, d[2] * sp], delay: r() * 0.1, life: 0.8 + r() * 0.9, size: 0.035 + r() * 0.04 };
     },
   }, 'add', ({ a, t, vel, par }) => {

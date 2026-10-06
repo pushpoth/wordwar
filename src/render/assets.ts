@@ -1,6 +1,7 @@
 import { Mesh, MeshStandardNodeMaterial, type MeshStandardMaterial, type Object3D } from 'three/webgpu';
 import { attribute } from 'three/tsl';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { weather } from './weathering';
 
 const loader = new GLTFLoader();
 const cache = new Map<string, Promise<Object3D>>();
@@ -41,5 +42,6 @@ function upgrade(src: MeshStandardMaterial, hasAO: boolean) {
   m.map = src.map;
   m.side = src.side;
   if (hasAO) m.aoNode = attribute<'vec4'>('color').r;
+  weather(m);
   return m;
 }

@@ -1,13 +1,12 @@
-import { Group, Vector3, type Camera, type Object3D, type Scene } from 'three/webgpu';
+import { Group, type Camera, type Scene } from 'three/webgpu';
 import { CELL, type Board } from '../render/board';
 import { loadModel } from '../render/assets';
 import { createExplosion } from '../render/fx/explosion';
 import { createBoardLabels } from '../render/labels';
-import { waveOffset } from '../render/ocean';
+import type { HullFootprint, Hulls } from '../render/hulls';
+import type { IslandShore } from '../render/ocean';
 import { createWordSign } from '../render/word-sign';
-
-/** Something that rides the swell at a fixed spot. */
-type Floater = { obj: Object3D; x: number; z: number; yaw: number; lift: number; bob: number; roll?: number; pitch?: number };
+import { footprint, ride, type Floater } from './buoyancy';
 
 type ShipSpec = { word: string; col: number; row: number; dir: 'h' | 'v'; revealed: string };
 
@@ -22,38 +21,49 @@ const MISSES: [number, number][] = [
   [1, 3], [2, 3], [1, 4], [2, 4], [3, 4], [0, 5], [1, 5], [2, 5], [0, 6], [1, 6], [4, 3], [5, 4], [6, 6],
 ];
 const ISLANDS = [
-  { model: 'island_lighthouse', x: -8.4, z: -1.2, yaw: 0.35, scale: 1.0 },
-  { model: 'island_wooded', x: 8.3, z: -4.6, yaw: 2.1, scale: 0.95 },
+  { model: 'island_lighthouse', x: -8.9, z: -1.2, yaw: 0.35, scale: 1.0 },
+  { model: 'island_wooded', x: 8.7, z: -4.8, yaw: 2.1, scale: 0.95 },
   { model: 'island_rock', x: 7.6, z: 1.6, yaw: 0.8, scale: 1.0 },
-  { model: 'island_wooded', x: 7.9, z: 7.6, yaw: -0.6, scale: 1.25 },
+  { model: 'island_wooded', x: 8.3, z: 7.9, yaw: -0.6, scale: 1.25 },
   { model: 'island_rock', x: -7.2, z: 7.4, yaw: 2.6, scale: 0.85 },
   { model: 'island_rock', x: -4.0, z: -8.4, yaw: 1.2, scale: 0.7 },
 ];
+/** Island kit footprint (sx, sy) per model, and a global size boost. */
+const ISLAND_SIZE: Record<string, [number, number]> = {
+  island_lighthouse: [1.75, 1.3], island_wooded: [1.3, 1.05], island_rock: [0.8, 0.65],
+};
+const ISLAND_SCALE = 1.2;
 const BUOYS: [number, number][] = [[-6.0, 4.6], [6.1, -1.4], [3.2, 6.1], [-2.6, -6.2], [5.9, 4.2], [-6.1, -4.1], [1.5, -6.0]];
 
-export async function buildDiorama(scene: Scene, board: Board) {
+/** Destroyer model dimensions in cells (bow at +X), before per-ship scaling. */
+const DESTROYER = { halfLength: 2.1, halfBeam: 0.29 };
+const SUB = { halfLength: 1.25, halfBeam: 0.172, scale: 0.95, cruiseRadius: 1.1, cruiseRate: 0.22 };
+
+export async function buildDiorama(scene: Scene, board: Board, hulls: Hulls) {
   const root = new Group();
   root.name = 'diorama';
   scene.add(root);
   const floaters: Floater[] = [];
-  const islands: { x: number; z: number; r: number }[] = [];
+  const islands: IslandShore[] = [];
 
-  // Islands (static, ground the foam rings).
-  const radius: Record<string, number> = { island_lighthouse: 1.65, island_wooded: 1.25, island_rock: 0.78 };
+  // Islands (static). Waterline radii come from the island kit's sx/sy (Blender
+  // Y becomes three.js -Z, which an ellipse doesn't care about).
   for (const isl of ISLANDS) {
     const m = await loadModel(isl.model);
+    const scale = isl.scale * ISLAND_SCALE;
     m.position.set(isl.x, 0, isl.z);
     m.rotation.y = isl.yaw;
-    m.scale.setScalar(isl.scale);
+    m.scale.setScalar(scale);
     root.add(m);
-    islands.push({ x: isl.x, z: isl.z, r: radius[isl.model] * isl.scale });
+    const [sx, sy] = ISLAND_SIZE[isl.model];
+    islands.push({ x: isl.x, z: isl.z, rx: sx * 1.04 * scale, rz: sy * 1.06 * scale, yaw: isl.yaw });
   }
 
   for (const [i, [x, z]] of BUOYS.entries()) {
     const b = await loadModel('buoy');
     b.scale.setScalar(1.15);
     root.add(b);
-    floaters.push({ obj: b, x, z, yaw: i * 1.7, lift: 0, bob: 1 });
+    floaters.push({ obj: b, x, z, yaw: i * 1.7 });
   }
 
   // Cell states.
@@ -62,15 +72,17 @@ export async function buildDiorama(scene: Scene, board: Board) {
   const cellsOf = (s: ShipSpec) =>
     [...s.word].map((_, i) => board.cellCenter(s.dir === 'h' ? s.col + i : s.col, s.dir === 'h' ? s.row : s.row + i));
 
-  async function placeShip(s: ShipSpec, sunk = false) {
+  async function placeShip(s: ShipSpec, sinking = false) {
     const ship = await loadModel('destroyer');
     const cells = cellsOf(s);
     const mid = cells[0].clone().add(cells[cells.length - 1]).multiplyScalar(0.5);
-    ship.scale.setScalar((s.word.length * 0.95) / 4.2);
+    const scale = (s.word.length * 0.95) / (DESTROYER.halfLength * 2);
+    ship.scale.setScalar(scale);
     root.add(ship);
     floaters.push({
-      obj: ship, x: mid.x, z: mid.z, yaw: s.dir === 'h' ? 0 : -Math.PI / 2, lift: sunk ? -0.1 : 0, bob: 0.45,
-      roll: sunk ? 0.16 : 0, pitch: sunk ? -0.05 : 0,
+      obj: ship, x: mid.x, z: mid.z, yaw: s.dir === 'h' ? 0 : -Math.PI / 2,
+      hull: { halfLength: DESTROYER.halfLength * scale, halfBeam: DESTROYER.halfBeam * scale },
+      ...(sinking ? { lift: -0.1, list: { roll: 0.16, pitch: -0.05 } } : {}),
     });
     return { ship, cells, mid };
   }
@@ -95,29 +107,37 @@ export async function buildDiorama(scene: Scene, board: Board) {
   root.add(boom.group);
   board.uniforms.blastCenter.value.set(boom.group.position.x, boom.group.position.z);
 
-  // Player submarine, bottom-left of the board, with its sonar ring.
+  // Player submarine cruising a slow circle at the bottom-left, sonar ring in tow.
   const sub = await loadModel('submarine');
-  sub.scale.setScalar(0.95);
+  sub.scale.setScalar(SUB.scale);
   root.add(sub);
-  const subPos = board.cellCenter(1, 8);
-  floaters.push({ obj: sub, x: subPos.x, z: subPos.z + 0.2, yaw: 0.55, lift: -0.02, bob: 0.35 });
-  board.uniforms.sonarCenter.value.set(subPos.x, subPos.z + 0.2);
+  const subHome = board.cellCenter(1, 7);
+  const subFloat: Floater = {
+    obj: sub, x: subHome.x, z: subHome.z, yaw: 0, speed: SUB.cruiseRadius * SUB.cruiseRate,
+    hull: { halfLength: SUB.halfLength * SUB.scale, halfBeam: SUB.halfBeam * SUB.scale },
+  };
+  floaters.push(subFloat);
   board.uniforms.sonarRadius.value = 2.1;
 
   const labels = createBoardLabels(board.size);
   root.add(labels.group);
 
   const BLAST_PERIOD = 4.5;
-  const tmp = new Vector3();
-  const probe = new Vector3();
-  function update(t: number, camera: Camera) {
+  function update(t: number, dt: number, camera: Camera) {
+    const th = t * SUB.cruiseRate + 2.2;
+    subFloat.x = subHome.x + Math.cos(th) * SUB.cruiseRadius;
+    subFloat.z = subHome.z + Math.sin(th) * SUB.cruiseRadius;
+    subFloat.yaw = Math.atan2(-Math.cos(th), -Math.sin(th));
+    board.uniforms.sonarCenter.value.set(subFloat.x, subFloat.z);
+
+    const prints: HullFootprint[] = [];
     for (const f of floaters) {
-      waveOffset(f.x, f.z, t, tmp);
-      f.obj.position.set(f.x + tmp.x * f.bob, f.lift + tmp.y * f.bob, f.z + tmp.z * f.bob);
-      const sx = waveOffset(f.x + 0.3, f.z, t, probe).y - tmp.y;
-      const sz = waveOffset(f.x, f.z + 0.3, t, probe).y - tmp.y;
-      f.obj.rotation.set((f.roll ?? 0) + sz * 1.6 * f.bob, f.yaw, (f.pitch ?? 0) - sx * 1.6 * f.bob, 'YXZ');
+      ride(f, t, dt);
+      const p = footprint(f);
+      if (p) prints.push(p);
     }
+    hulls.set(prints);
+
     sign.update(camera, t);
     labels.update(camera);
     const age = t % BLAST_PERIOD;

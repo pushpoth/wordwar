@@ -17,7 +17,7 @@ bronze = mat("sub_prop", "#8a6a3a", rough=0.35, metal=0.9)
 mark = mat("sub_mark", "#d9d6cc", rough=0.6)
 lamp = mat("sub_lamp", "#fff1c9", rough=0.2, emit="#ffe2a0", emit_strength=5.0)
 
-ZC = 0.02  # hull axis height above the waterline
+ZC = -0.1  # hull axis below the waterline: surfaced, only the upper hull and sail show
 parts = []
 
 profile = [(0.012, -1.25), (0.05, -1.15), (0.1, -0.95), (0.145, -0.65), (0.17, -0.35), (0.172, 0.0),

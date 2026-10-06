@@ -8,25 +8,22 @@ import { simTime as time } from './clock';
 
 const glyphCache = new Map<string, CanvasTexture>();
 
-/** White glyph on transparent, with a soft glow baked in for the bloom pass to catch. */
+/** Crisp white glyph on transparent; the bloom pass adds a light halo. */
 function glyph(ch: string) {
   let tex = glyphCache.get(ch);
   if (tex) return tex;
   const c = document.createElement('canvas');
-  c.width = c.height = 256;
+  c.width = c.height = 512;
   const g = c.getContext('2d')!;
   g.textAlign = 'center';
   g.textBaseline = 'middle';
-  g.font = `900 ${ch === '_' ? 170 : 178}px "Arial Black", "Helvetica Neue", Arial, sans-serif`;
-  g.shadowColor = 'rgba(255,255,255,0.9)';
-  g.shadowBlur = 18;
+  g.font = `900 ${ch === '_' ? 340 : 356}px "Arial Black", "Helvetica Neue", Arial, sans-serif`;
   g.fillStyle = '#fff';
-  g.fillText(ch, 128, ch === '_' ? 110 : 140);
-  g.shadowBlur = 0;
-  g.fillText(ch, 128, ch === '_' ? 110 : 140);
+  g.fillText(ch, 256, ch === '_' ? 220 : 280);
   tex = new CanvasTexture(c);
   tex.colorSpace = SRGBColorSpace;
-  tex.anisotropy = 4;
+  tex.anisotropy = 8;
+  tex.generateMipmaps = true;
   glyphCache.set(ch, tex);
   return tex;
 }
@@ -63,7 +60,7 @@ export function createWordSign(word: string) {
     const face = new MeshBasicNodeMaterial({ transparent: true, depthWrite: false });
     const a = mix(blankTex.a.mul(0.55), letterTex.a, rev);
     const flicker = sin(time.mul(9).add(i * 1.7)).mul(0.04).add(1);
-    const hot = vec3(4.2, 3.6, 2.6).mul(flicker);
+    const hot = vec3(1.9, 1.62, 1.18).mul(flicker);
     const dim = vec3(1.3, 0.75, 0.18);
     face.colorNode = vec4(mix(dim, hot, rev), 1);
     face.opacityNode = a.mul(float(1));

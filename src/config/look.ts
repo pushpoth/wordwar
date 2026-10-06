@@ -32,6 +32,8 @@ export const LOOK = {
     intensity: 0.5,
     envIntensity: 0.55,
   },
+  /** Wave steepness multiplier: 0.4 calm, 1 moderate, 1.8 rough. `?sea=` overrides. */
+  seaState: 1,
   exposure: 0.95,
   post: {
     bloomStrength: 0.45,

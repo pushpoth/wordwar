@@ -13,7 +13,9 @@ def make_island(seed, sx=1.75, sy=1.3, height=0.62, plateau=0.52, lighthouse=Fal
     R = rng(seed)
     rock = mat("rock", "#6f675d", rough=0.92)
     rock_dark = mat("rock_dark", "#4a4640", rough=0.95)
-    grass = mat("grass", "#5b7a35", rough=0.9)
+    grass = mat("grass", "#567133", rough=0.9)
+    grass_dark = mat("grass_dark", "#3d5629", rough=0.92)
+    dirt = mat("dirt", "#6d5c45", rough=0.95)
     sand = mat("sand", "#b8a27c", rough=0.95)
     white = mat("paint_white", "#ebe6da", rough=0.6)
     red = mat("paint_red", "#b52a20", rough=0.5)
@@ -31,10 +33,11 @@ def make_island(seed, sx=1.75, sy=1.3, height=0.62, plateau=0.52, lighthouse=Fal
     parts = []
 
     # --- Landmass ---------------------------------------------------------------
-    land = icosphere("land", 1.0, subdiv=5, scale=(sx, sy, height), loc=(0, 0, 0.08))
+    land = icosphere("land", 1.0, subdiv=6, scale=(sx, sy, height), loc=(0, 0, 0.08))
     land.data.materials.append(rock)
     displace(land, scale=0.55, strength=0.45, offset=(3.1 + seed * 7.3, 1.7 + seed * 2.9, 0.4))
     displace(land, scale=0.18, strength=0.12, offset=(-2.0 + seed * 3.7, 5.0, 1.0))
+    displace(land, scale=0.06, strength=0.035, offset=(seed * 1.3, -4.0, 2.0))
     apply_all([land])
 
     bm = bmesh.new()
@@ -42,13 +45,33 @@ def make_island(seed, sx=1.75, sy=1.3, height=0.62, plateau=0.52, lighthouse=Fal
     for v in bm.verts:
         if v.co.z > plateau:
             v.co.z = plateau + (v.co.z - plateau) * 0.18
+        elif v.co.z > -0.05:
+            # Cliff strata: horizontal ledges pushed in and out along the face.
+            r = math.hypot(v.co.x, v.co.y) or 1.0
+            ledge = 0.022 * math.sin(v.co.z * 46 + seed) + 0.012 * math.sin(v.co.z * 113)
+            v.co.x += v.co.x / r * ledge
+            v.co.y += v.co.y / r * ledge
     bmesh.ops.bisect_plane(bm, geom=bm.verts[:] + bm.edges[:] + bm.faces[:], plane_co=(0, 0, -0.28),
                            plane_no=(0, 0, 1), clear_inner=True)
     bm.to_mesh(land.data)
     bm.free()
-    decimate(land, 0.4)
+    decimate(land, 0.35)
     apply_all([land])
     paint_by_slope(land, grass, min_dot=0.7, min_z=0.32)
+    # Break the grass into darker patches and bare dirt.
+    from mathutils import noise
+    for m in (grass_dark, dirt):
+        land.data.materials.append(m)
+    names = [m.name for m in land.data.materials]
+    gi, di, ti = names.index("grass"), names.index("grass_dark"), names.index("dirt")
+    for poly in land.data.polygons:
+        if poly.material_index != gi:
+            continue
+        n = noise.noise(poly.center * 2.6 + Vector((seed, seed * 0.5, 0)))
+        if n > 0.32:
+            poly.material_index = ti
+        elif n > 0.02:
+            poly.material_index = di
     parts.append(land)
 
     # Ground-height lookup for placing props on the plateau.
@@ -73,7 +96,7 @@ def make_island(seed, sx=1.75, sy=1.3, height=0.62, plateau=0.52, lighthouse=Fal
         rr = R.uniform(0.9, 1.12)
         x, y = sx * rr * math.cos(a), sy * rr * math.sin(a)
         s = R.uniform(0.1, 0.3) * (1.25 if rr < 1.0 else 1.0)
-        b = icosphere(f"boulder{i}", s, subdiv=2, loc=(x, y, R.uniform(-0.05, 0.12) if rr < 1.0 else R.uniform(-0.06, 0.02)),
+        b = icosphere(f"boulder{i}", s, subdiv=3, loc=(x, y, R.uniform(-0.05, 0.12) if rr < 1.0 else R.uniform(-0.06, 0.02)),
                       scale=(1.0, R.uniform(0.7, 1.0), R.uniform(0.55, 0.8)),
                       material=rock_dark if i % 3 else rock)
         displace(b, scale=0.15, strength=s * 0.6, offset=(i * 3.1, i * 1.7, 0))
@@ -141,10 +164,10 @@ def make_island(seed, sx=1.75, sy=1.3, height=0.62, plateau=0.52, lighthouse=Fal
     def conifer(i, x, y, h):
         gz = ground(x, y)
         parts.append(cyl(f"trunk{i}", 0.018, h * 0.3, loc=(x, y, gz + h * 0.15), material=bark, verts=6))
-        for k in range(3):
-            rr = h * (0.3 - k * 0.07)
-            cz = gz + h * (0.28 + k * 0.22)
-            cone = cyl(f"pine{i}_{k}", rr, h * 0.42, loc=(x, y, cz), material=pine, verts=7, r2=0.0)
+        for k in range(4):
+            rr = h * (0.3 - k * 0.055)
+            cz = gz + h * (0.26 + k * 0.17)
+            cone = cyl(f"pine{i}_{k}", rr, h * 0.38, loc=(x, y, cz), material=pine, verts=9, r2=0.0)
             cone.rotation_euler.z = R.uniform(0, 1)
             parts.append(cone)
 
@@ -152,9 +175,9 @@ def make_island(seed, sx=1.75, sy=1.3, height=0.62, plateau=0.52, lighthouse=Fal
     def broadleaf(i, x, y, h):
         gz = ground(x, y)
         parts.append(cyl(f"btrunk{i}", 0.022, h * 0.45, loc=(x, y, gz + h * 0.22), material=bark, verts=6))
-        for k in range(4):
-            ox, oy = R.uniform(-0.06, 0.06), R.uniform(-0.06, 0.06)
-            blob = icosphere(f"leaf{i}_{k}", h * R.uniform(0.2, 0.28), subdiv=1,
+        for k in range(6):
+            ox, oy = R.uniform(-0.08, 0.08), R.uniform(-0.08, 0.08)
+            blob = icosphere(f"leaf{i}_{k}", h * R.uniform(0.16, 0.25), subdiv=2,
                              loc=(x + ox, y + oy, gz + h * R.uniform(0.55, 0.8)),
                              material=leaf if k % 2 else leaf_light)
             displace(blob, scale=0.08, strength=0.03, offset=(i, k, 0))
