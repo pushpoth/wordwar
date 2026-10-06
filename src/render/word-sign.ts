@@ -61,8 +61,10 @@ export function createWordSign(word: string) {
     const face = new MeshStandardNodeMaterial({ roughness: 0.62, metalness: 0, alphaTest: 0.5 });
     const paint = vec3(0.86, 0.82, 0.72);
     const stencil = vec3(0.55, 0.32, 0.06);
-    face.colorNode = vec4(mix(stencil, paint, rev), 1);
-    face.opacityNode = mix(blankTex.a.mul(0.9), letterTex.a, rev);
+    // rev: 0 unknown (underscore), 0.5 radar hint (amber stencil letter, still
+    // has to be torpedoed), 1 confirmed hit (painted letter).
+    face.colorNode = vec4(mix(stencil.mul(1.6), paint, smoothstep(0.6, 0.95, rev)), 1);
+    face.opacityNode = mix(blankTex.a.mul(0.9), letterTex.a, smoothstep(0.2, 0.3, rev));
     const faceMesh = new Mesh(faceGeo, face);
     faceMesh.position.z = 0.082;
     faceMesh.renderOrder = 4;
@@ -107,8 +109,9 @@ export function createWordSign(word: string) {
     }
   }
 
-  function setRevealed(mask: boolean[]) {
-    mask.forEach((r, i) => { if (revealedU[i]) revealedU[i].value = r ? 1 : 0; });
+  /** Per letter: 0 unknown, 0.5 radar hint, 1 confirmed by a torpedo hit. */
+  function setRevealed(mask: number[]) {
+    mask.forEach((r, i) => { if (revealedU[i]) revealedU[i].value = r; });
   }
 
   function update(camera: Camera, t: number) {

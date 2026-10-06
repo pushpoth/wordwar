@@ -33,15 +33,17 @@ camera controls); touch input.
 
 ## Build order
 
-1. Refine this plan against the repo.
-2. Port the engine and tests; `npm test` green.
-3. Board letters: a glyph atlas sampled by the water shader, cell letter and
+1. ✅ Refine this plan against the repo.
+2. ✅ Port the engine and tests; `npm test` green.
+3. ✅ Board letters: a glyph atlas sampled by the water shader, cell letter and
    state in the board data texture.
-4. Game controller: mission from seed, ships spawned on discovery, cell states
+4. ✅ Game controller: mission from seed, ships spawned on discovery, cell states
    from engine events, target billboard from `activeUnitId`.
-5. Keyboard input and the minimal HUD.
-6. Hit, miss and kill feedback; mission-end card.
+5. ✅ Keyboard input and the minimal HUD.
+6. ✅ Hit, miss and kill feedback; mission-end card.
 7. Push a preview; the user plays it and reports frame rate.
+
+# Amended: 2026-10-06 radar-revealed letters display as hints that still need a torpedo (see decisions.md); `?demo` keeps the phase 0 diorama.
 
 ## Done when
 

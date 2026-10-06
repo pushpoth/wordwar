@@ -8,6 +8,7 @@ import { createOcean } from './render/ocean';
 import { createPost } from './render/post';
 import { createRenderer } from './render/renderer';
 import { createSky } from './render/sky';
+import { createController } from './game/controller';
 import { buildDiorama } from './scene/diorama';
 import { LOOK } from './config/look';
 
@@ -25,7 +26,7 @@ async function boot() {
 
   const { renderer, backend } = await createRenderer(stage);
   const scene = new Scene();
-  const { camera, target, update: updateCamera } = createCamera(window.innerWidth / window.innerHeight);
+  const { camera, target, update: updateCamera, azimuth } = createCamera(window.innerWidth / window.innerHeight);
   const sky = createSky(scene, renderer);
 
   SEA.state = Number(params.get('sea') ?? LOOK.seaState);
@@ -34,8 +35,11 @@ async function boot() {
   const ocean = createOcean(sky.sun, { board, hulls });
   scene.add(ocean.mesh);
 
-  const diorama = await buildDiorama(scene, board, hulls);
-  ocean.setIslands(diorama.islands);
+  // `?demo` shows the fixed phase 0 diorama for visual review; otherwise play.
+  const world = params.has('demo')
+    ? await buildDiorama(scene, board, hulls)
+    : await createController(scene, board, hulls);
+  ocean.setIslands(world.islands);
 
   const post = createPost(renderer, scene, camera, camera.position.distanceTo(target));
 
@@ -54,7 +58,7 @@ async function boot() {
     const dt = tickClock();
     updateCamera(dt);
     ocean.update();
-    diorama.update(simTime.value, dt, camera);
+    world.update(simTime.value, dt, camera, azimuth());
     post.pipeline.render();
 
     state.frames++;

@@ -66,7 +66,7 @@ export function createCamera(aspect: number) {
 
   place();
   fitFov(camera, aspect);
-  return { camera, target, update };
+  return { camera, target, update, azimuth: () => orbit.az };
 }
 
 /** Keep the board in frame on narrow screens by widening the vertical FOV. */

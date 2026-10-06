@@ -2,7 +2,10 @@
 
 ## Where things stand
 
-Phase 0 is mostly built on branch `phase-0-visual-scene`: a static mid-battle
+Phase 1 slice 1 is playable on `phase-1-gameplay`: a 10×10 mission on the
+ported engine (`src/engine/`, 63 tests) driven by `src/game/` (controller,
+fleet, HUD). `?seed=` repeats a board; `?demo` shows the fixed phase 0 diorama.
+Phase 0, on PR #1: a static mid-battle
 diorama renders end to end on `WebGPURenderer` (sky, Gerstner ocean with the
 board painted into it, six Blender-built models, word billboard, looping
 explosion, depth of field, bloom, grade, SMAA). Run `npm run dev` (port 5190),

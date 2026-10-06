@@ -4,6 +4,7 @@
 //   npm run screenshot -- --out shots/a.png --t 12.5 --w 1920 --h 1080
 //   npm run screenshot -- --query "view=close" --frames 90
 //   npm run screenshot -- --url https://<preview>.vercel.app
+//   npm run screenshot -- --hud --no-pin --keys "E,T,A,Tab" --key-frames 12   (play, then shoot)
 //
 // Boots the Vite dev server in-process and drives the page with the headless
 // Chromium bundled inside @sparticuz/chromium (software WebGL via SwiftShader),
@@ -34,6 +35,9 @@ const width = Number(args.w ?? 1536);
 const height = Number(args.h ?? 1024);
 const frames = Number(args.frames ?? 45);
 const t = args.t ?? '8';
+const pin = !args['no-pin'];
+const keys = typeof args.keys === 'string' ? args.keys.split(',').map((k) => k.trim()).filter(Boolean) : [];
+const keyFrames = Number(args['key-frames'] ?? 10);
 const out = resolve(args.out ?? 'screenshots/scene.png');
 const timeoutMs = Number(args.timeout ?? 180000);
 
@@ -47,8 +51,8 @@ if (!base) {
 }
 const url = new URL(base);
 url.searchParams.set('backend', 'webgl');
-url.searchParams.set('t', String(t));
-url.searchParams.set('shot', '1');
+if (pin) url.searchParams.set('t', String(t));
+if (!args.hud) url.searchParams.set('shot', '1');
 if (args.query) for (const [k, v] of new URLSearchParams(args.query)) url.searchParams.set(k, v);
 
 const customExe = process.env.CHROMIUM_PATH;
@@ -75,6 +79,12 @@ try {
     { timeout: timeoutMs, polling: 250 },
     frames,
   );
+  // Play: press each key, then let the scene run a few frames.
+  for (const key of keys) {
+    await page.keyboard.press(key.length === 1 ? key.toUpperCase() : key);
+    const target = (await page.evaluate(() => window.__ww?.frames ?? 0)) + keyFrames;
+    await page.waitForFunction((n) => (window.__ww?.frames ?? 0) >= n, { timeout: timeoutMs, polling: 200 }, target);
+  }
   const bootError = await page.$eval('#boot-error', (el) => el.textContent).catch(() => null);
   mkdirSync(dirname(out), { recursive: true });
   await page.screenshot({ path: out });

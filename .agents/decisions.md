@@ -52,3 +52,12 @@ Append-only. Close an entry by changing its status; never delete one.
   averaged about 25 fps, peaking near 50. The look was the same; models
   jittered slightly. 56 fps is still under the 60 fps target, so draw calls
   (many multi-material meshes) are the first optimisation to make.
+
+## 2026-10-06 · Radar-revealed letters are hints; only torpedo hits count
+- **Status:** active
+- **Decision:** Keep Typemariner's rule that a ship sinks only when every
+  letter has been torpedoed. Letters the radar uncovered show as amber stencil
+  hints on the billboard, the board and the HUD, apart from painted, confirmed hits.
+- **Why:** Showing radar letters like hits made a word look complete while the
+  ship stayed afloat (seen on seed 4242, OFFSHORE). Changing the rule would
+  rebalance every mission; changing the display costs nothing.

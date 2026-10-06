@@ -8,6 +8,7 @@ import type { IslandShore } from '../render/ocean';
 import { createWordSign } from '../render/word-sign';
 import { createWreck } from '../render/wreck';
 import { footprint, ride, type Floater } from './buoyancy';
+import { addScenery } from './scenery';
 
 type ShipSpec = { word: string; col: number; row: number; dir: 'h' | 'v'; revealed: string };
 
@@ -21,24 +22,9 @@ const SUNK: ShipSpec = { word: 'RAPID', col: 3, row: 5, dir: 'h', revealed: 'RAP
 const MISSES: [number, number][] = [
   [1, 3], [2, 3], [1, 4], [2, 4], [3, 4], [0, 5], [1, 5], [2, 5], [0, 6], [1, 6], [4, 3], [5, 4], [6, 6],
 ];
-const ISLANDS = [
-  { model: 'island_lighthouse', x: -8.9, z: -1.2, yaw: 0.35, scale: 1.0 },
-  { model: 'island_wooded', x: 8.7, z: -4.8, yaw: 2.1, scale: 0.95 },
-  { model: 'island_rock', x: 7.6, z: 1.6, yaw: 0.8, scale: 1.0 },
-  { model: 'island_wooded', x: 8.3, z: 7.9, yaw: -0.6, scale: 1.25 },
-  { model: 'island_rock', x: -7.2, z: 7.4, yaw: 2.6, scale: 0.85 },
-  { model: 'island_rock', x: -4.0, z: -8.4, yaw: 1.2, scale: 0.7 },
-];
-/** Island kit footprint (sx, sy) per model, and a global size boost. */
-const ISLAND_SIZE: Record<string, [number, number]> = {
-  island_lighthouse: [1.75, 1.3], island_wooded: [1.3, 1.05], island_rock: [0.8, 0.65],
-};
-const ISLAND_SCALE = 1.2;
-const BUOYS: [number, number][] = [[-6.0, 4.6], [6.1, -1.4], [3.2, 6.1], [-2.6, -6.2], [5.9, 4.2], [-6.1, -4.1], [1.5, -6.0]];
-
 /** Destroyer model dimensions in cells (bow at +X), before per-ship scaling. */
-const DESTROYER = { halfLength: 2.1, halfBeam: 0.29 };
-const SUB = {
+export const DESTROYER = { halfLength: 2.1, halfBeam: 0.29 };
+export const SUB = {
   halfLength: 1.25, halfBeam: 0.172, scale: 0.95, cruiseRadius: 1.1, cruiseRate: 0.22,
   /** Pivot point as a fraction of half length ahead of centre; drift angle into the turn. */
   pivot: 0.45, driftDeg: 11,
@@ -51,25 +37,9 @@ export async function buildDiorama(scene: Scene, board: Board, hulls: Hulls) {
   const floaters: Floater[] = [];
   const islands: IslandShore[] = [];
 
-  // Islands (static). Waterline radii come from the island kit's sx/sy (Blender
-  // Y becomes three.js -Z, which an ellipse doesn't care about).
-  for (const isl of ISLANDS) {
-    const m = await loadModel(isl.model);
-    const scale = isl.scale * ISLAND_SCALE;
-    m.position.set(isl.x, 0, isl.z);
-    m.rotation.y = isl.yaw;
-    m.scale.setScalar(scale);
-    root.add(m);
-    const [sx, sy] = ISLAND_SIZE[isl.model];
-    islands.push({ x: isl.x, z: isl.z, rx: sx * 1.04 * scale, rz: sy * 1.06 * scale, yaw: isl.yaw });
-  }
-
-  for (const [i, [x, z]] of BUOYS.entries()) {
-    const b = await loadModel('buoy');
-    b.scale.setScalar(1.15);
-    root.add(b);
-    floaters.push({ obj: b, x, z, yaw: i * 1.7 });
-  }
+  const scenery = await addScenery(root);
+  islands.push(...scenery.islands);
+  floaters.push(...scenery.floaters);
 
   // Cell states.
   for (const [c, r] of MISSES) board.setCell(c, r, CELL.miss);
@@ -98,13 +68,14 @@ export async function buildDiorama(scene: Scene, board: Board, hulls: Hulls) {
   // Discovered enemies; the first is the current torpedo target.
   const target = await placeShip(SHIPS[0]);
   for (const s of SHIPS.slice(1)) await placeShip(s);
-  for (const cell of target.cells) {
-    board.setCell(cell.x + board.size / 2 - 0.5, cell.z + board.size / 2 - 0.5, CELL.target);
-  }
+  target.cells.forEach((cell, i) => {
+    const ch = SHIPS[0].revealed[i];
+    board.setCell(cell.x + board.size / 2 - 0.5, cell.z + board.size / 2 - 0.5, ch === '_' ? CELL.hidden : CELL.hit, ch === '_' ? '' : ch, true);
+  });
 
   const sign = createWordSign(SHIPS[0].word);
   sign.place(target.cells, 1.25);
-  sign.setRevealed([...SHIPS[0].revealed].map((ch) => ch !== '_'));
+  sign.setRevealed([...SHIPS[0].revealed].map((ch) => (ch === '_' ? 0 : 1)));
   root.add(sign.group);
 
   // The ship being sunk: the explosion, then the hull breaks in two and goes down.
@@ -115,7 +86,7 @@ export async function buildDiorama(scene: Scene, board: Board, hulls: Hulls) {
   wreck.loose.rotation.y = sunk.floater.yaw;
   wreck.loose.scale.setScalar(sunk.scale);
   root.add(wreck.loose);
-  for (const cell of sunk.cells) board.setCell(cell.x + board.size / 2 - 0.5, cell.z + board.size / 2 - 0.5, CELL.sunk);
+  sunk.cells.forEach((cell, i) => board.setCell(cell.x + board.size / 2 - 0.5, cell.z + board.size / 2 - 0.5, CELL.sunk, SUNK.word[i]));
   const boom = createExplosion(7);
   boom.group.position.set(sunk.mid.x + 0.3, 0.15, sunk.mid.z);
   root.add(boom.group);
@@ -139,7 +110,8 @@ export async function buildDiorama(scene: Scene, board: Board, hulls: Hulls) {
   /** Demo loop: blast at 0 s, wreck sinks, the ship resets at the end. */
   const BLAST_PERIOD = 10;
   const BREAK_AT = 0.1;
-  function update(t: number, dt: number, camera: Camera) {
+  function update(t: number, dt: number, camera: Camera, azimuthDeg = 0) {
+    board.faceCamera(azimuthDeg);
     // A hull turns about a pivot point near its bow: the bow tracks the path
     // and points slightly into the turn while the stern skids outward.
     const th = t * SUB.cruiseRate + 2.2;
