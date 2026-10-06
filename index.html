@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Word War</title>
+    <link rel="icon" href="/favicon.svg" />
+    <style>
+      html, body { margin: 0; height: 100%; background: #04121c; overflow: hidden; }
+      #stage { position: fixed; inset: 0; }
+      #stage canvas { display: block; }
+      #hud-stats {
+        position: fixed; left: 12px; bottom: 10px; z-index: 2;
+        font: 12px/1.35 ui-monospace, SFMono-Regular, Menlo, monospace;
+        color: #cfe7f5; background: rgba(4, 18, 28, 0.6); padding: 6px 8px; border-radius: 6px;
+        pointer-events: none; white-space: pre;
+      }
+      body.shot #hud-stats { display: none; }
+      #boot-error { position: fixed; inset: 0; display: grid; place-items: center; color: #ffb4a8; font: 15px system-ui; padding: 16px; text-align: center; }
+    </style>
+  </head>
+  <body>
+    <div id="stage"></div>
+    <div id="hud-stats"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
