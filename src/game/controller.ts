@@ -1,7 +1,7 @@
 import { Group, type Camera, type Scene } from 'three/webgpu';
 import { BATTERY_MAX } from '../config/balance';
 import type { EngineEvent, MissionState, Unit } from '../engine/types';
-import { loadModel } from '../render/assets';
+import { loadModel, preloadModels } from '../render/assets';
 import { CELL, type Board } from '../render/board';
 import type { HullFootprint, Hulls } from '../render/hulls';
 import { createBoardLabels } from '../render/labels';
@@ -37,6 +37,14 @@ export async function createController(scene: Scene, board: Board, hulls: Hulls)
   root.add(labels.group);
   const fleet = createFleet(root, board);
   const hud = createHud();
+
+  // Load everything a mission can show, and keep one of each in the scene,
+  // out of sight below the sea, until the shaders are compiled (see warmUp).
+  await preloadModels(['destroyer', 'destroyer_wreck', 'submarine']);
+  const warm = new Group();
+  warm.position.y = -40;
+  warm.add(await loadModel('destroyer'), await loadModel('destroyer_wreck'));
+  root.add(warm);
 
   // The player's submarine, holding station on its tile.
   const sub = await loadModel('submarine');
@@ -114,11 +122,12 @@ export async function createController(scene: Scene, board: Board, hulls: Hulls)
         else board.setCell(x, y, unit.destroyed ? CELL.sunk : CELL.hit, tile.letter, isTarget);
       }
     }
-    // Ships appear once any of their tiles has been found.
+    // Ships appear once, the first time any of their tiles is found. A sunk
+    // wreck leaves the fleet but stays in `discovered`, so it never resurfaces.
     for (const u of st.units) {
-      if (fleet.has(u.id)) continue;
+      if (discovered.includes(u.id)) continue;
       if (u.coords.some((_, i) => tileRevealed(st, u, i))) {
-        if (!discovered.includes(u.id)) discovered.push(u.id);
+        discovered.push(u.id);
         void fleet.spawn(u, now);
       }
     }
@@ -317,5 +326,11 @@ export async function createController(scene: Scene, board: Board, hulls: Hulls)
   const seedParam = Number(new URLSearchParams(location.search).get('seed'));
   start(Number.isFinite(seedParam) && seedParam > 0 ? seedParam : Math.floor(Math.random() * 1e6));
 
-  return { update, islands: scenery.islands as IslandShore[] };
+  return {
+    update,
+    islands: scenery.islands as IslandShore[],
+    /** Show every effect once so the renderer compiles it before play starts. */
+    warmUp: fleet.warmUp,
+    warmDone: () => root.remove(warm),
+  };
 }

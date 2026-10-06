@@ -136,7 +136,7 @@ export function createExplosion(seed = 1) {
   // Fireball: noisy heat ramp per puff — yellow-white core, orange body,
   // deep red rim and sooty edges. Normal blending keeps the colour saturated.
   sprites({
-    count: 120,
+    count: 96,
     spawn: (r) => {
       const d = unitDir(r, 0.35);
       const second = r() < 0.3;
@@ -164,7 +164,7 @@ export function createExplosion(seed = 1) {
 
   // Embers: fast, falling, tiny additive sparks.
   sprites({
-    count: 220,
+    count: 150,
     spawn: (r) => {
       const d = unitDir(r, 0.3);
       const sp = 2.0 + r() * 3.8;
@@ -202,14 +202,18 @@ export function createExplosion(seed = 1) {
     group.add(mesh);
   }
 
+  // The flash light lives outside the group and is never hidden: changing the
+  // number of lights in the scene would recompile every lit shader mid-game.
   const flash = new PointLight(0xff8a3a, 0, 9, 1.6);
   flash.position.set(0, 0.6, 0);
-  group.add(flash);
 
   function update() {
     const a = age.value;
+    // Idle explosions draw nothing: about 600 sprites saved per explosion.
+    group.visible = a >= 0 && a < 7;
+    flash.position.set(group.position.x, group.position.y + 0.6, group.position.z);
     flash.intensity = a < 0 ? 0 : 22 * Math.exp(-a * 3.2) + 4 * Math.exp(-a * 0.6) * (0.8 + 0.2 * Math.sin(a * 31));
   }
 
-  return { group, age, update, origin: new Vector3() };
+  return { group, flash, age, update, origin: new Vector3() };
 }

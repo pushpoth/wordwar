@@ -89,7 +89,7 @@ export async function buildDiorama(scene: Scene, board: Board, hulls: Hulls) {
   sunk.cells.forEach((cell, i) => board.setCell(cell.x + board.size / 2 - 0.5, cell.z + board.size / 2 - 0.5, CELL.sunk, SUNK.word[i]));
   const boom = createExplosion(7);
   boom.group.position.set(sunk.mid.x + 0.3, 0.15, sunk.mid.z);
-  root.add(boom.group);
+  root.add(boom.group, boom.flash);
   board.uniforms.blastCenter.value.set(boom.group.position.x, boom.group.position.z);
 
   // Player submarine cruising a slow circle at the bottom-left, sonar ring in tow.

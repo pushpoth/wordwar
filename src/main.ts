@@ -6,7 +6,7 @@ import { createCamera, fitFov } from './render/camera';
 import { pinnedTime, simTime, tickClock } from './render/clock';
 import { createOcean } from './render/ocean';
 import { createPost } from './render/post';
-import { createRenderer } from './render/renderer';
+import { createRenderer, resolution } from './render/renderer';
 import { createSky } from './render/sky';
 import { createController } from './game/controller';
 import { buildDiorama } from './scene/diorama';
@@ -43,6 +43,15 @@ async function boot() {
 
   const post = createPost(renderer, scene, camera, camera.position.distanceTo(target));
 
+  // Compile every shader the game can need before the first frame, so the
+  // first explosion or wreck doesn't stall while the GPU builds pipelines.
+  if ('warmUp' in world) {
+    const restore = world.warmUp();
+    await renderer.compileAsync(scene, camera);
+    restore();
+    world.warmDone();
+  }
+
   window.addEventListener('resize', () => {
     renderer.setSize(window.innerWidth, window.innerHeight);
     fitFov(camera, window.innerWidth / window.innerHeight);
@@ -54,12 +63,19 @@ async function boot() {
   let accFrames = 0;
   let lastStat = performance.now();
 
-  renderer.setAnimationLoop(() => {
+  // Cap at 60 fps: high-refresh screens would otherwise double the work (and the heat).
+  const fpsCap = Number(params.get('fps')) || 60;
+  let lastFrame = 0;
+  renderer.setAnimationLoop((frameTime: number) => {
+    if (frameTime - lastFrame < 1000 / fpsCap - 2) return;
+    lastFrame = frameTime;
     const dt = tickClock();
     updateCamera(dt);
     ocean.update();
     world.update(simTime.value, dt, camera, azimuth());
     post.pipeline.render();
+    const ratio = resolution.sample();
+    if (ratio !== null) renderer.setPixelRatio(ratio);
 
     state.frames++;
     accFrames++;
@@ -72,7 +88,7 @@ async function boot() {
       const info = renderer.info.render;
       statsEl.textContent =
         `${backend.toUpperCase()}  ${state.fps.toFixed(0)} fps\n` +
-        `${renderer.domElement.width}×${renderer.domElement.height}  ${info.drawCalls} draws  ${(info.triangles / 1000).toFixed(0)}k tris` +
+        `${renderer.domElement.width}×${renderer.domElement.height} @${renderer.getPixelRatio().toFixed(2)}  ${info.drawCalls} draws  ${(info.triangles / 1000).toFixed(0)}k tris` +
         (pinnedTime === null ? '\n← → spin   ↑ ↓ tilt' : `\nt pinned ${pinnedTime}s`);
     }
   });

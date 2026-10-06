@@ -23,7 +23,11 @@ Open in phase 0:
   weathering (`src/render/weathering.ts`); islands 20% bigger with strata and
   patchy grass; elliptical shorelines with inward surf and beach run-up; a
   denser blast; crisp billboard glyphs.
-- **Frame-rate risk:** this round added particles (about 600 sprites), island
+- **Performance (2026-10-06):** see the field log. One shared model material,
+  adaptive resolution, 60 fps cap and a shader warm-up before the first frame.
+  The user's last numbers before these fixes: Mac Safari 60 fps, K12 Firefox
+  ~40 fps, ~1.1 GB and ~30% CPU. Re-measure.
+- **Frame-rate risk (older):** this round added particles (about 600 sprites), island
   triangles (about 44k across three models) and per-pixel hull and island
   loops in the water shader. Re-measure on the dev machine before adding more.
 - **Round 3 review (2026-10-06)** addressed: distant water tiling broken up

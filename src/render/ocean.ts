@@ -57,7 +57,7 @@ function gerstner(p: Node2, calm: Node, sea: Node) {
 }
 
 
-export function createOcean(sunDir: Vector3, opts: { board?: Board; hulls?: Hulls } = {}, extent = 140, segments = 360) {
+export function createOcean(sunDir: Vector3, opts: { board?: Board; hulls?: Hulls } = {}, extent = 90, segments = 256) {
   const { board, hulls } = opts;
   const geo = new PlaneGeometry(extent, extent, segments, segments);
   geo.rotateX(-Math.PI / 2);

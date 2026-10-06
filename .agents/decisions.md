@@ -61,3 +61,12 @@ Append-only. Close an entry by changing its status; never delete one.
 - **Why:** Showing radar letters like hits made a word look complete while the
   ship stayed afloat (seen on seed 4242, OFFSHORE). Changing the rule would
   rebalance every mission; changing the display costs nothing.
+
+## 2026-10-06 · Models render through one shared material
+- **Status:** active
+- **Decision:** At load, each model node's parts merge into one mesh; colour,
+  roughness, metalness, glow and wear become vertex attributes read by one
+  `MeshStandardNodeMaterial`. Blender scripts keep using named flat materials.
+- **Why:** Draw calls (one per material, doubled by shadows) were the main CPU
+  cost. It rules out per-material textures; if a model ever needs a texture,
+  give that node its own material instead of the shared one.

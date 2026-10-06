@@ -41,6 +41,7 @@ export async function addScenery(root: Group) {
   for (const [i, [x, z]] of BUOYS.entries()) {
     const b = await loadModel('buoy');
     b.scale.setScalar(1.15);
+    b.traverse((o) => { o.castShadow = false; }); // too small to matter; saves a shadow draw each
     root.add(b);
     floaters.push({ obj: b, x, z, yaw: i * 1.7 });
   }

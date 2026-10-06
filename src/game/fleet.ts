@@ -37,7 +37,7 @@ export function createFleet(root: Group, board: Board) {
   const pool = [createExplosion(7), createExplosion(13)];
   for (const b of pool) {
     b.age.value = 99;
-    root.add(b.group);
+    root.add(b.group, b.flash);
   }
   const busy = new Set<ReturnType<typeof createExplosion>>();
 
@@ -140,6 +140,20 @@ export function createFleet(root: Group, board: Board) {
 
   return {
     spawn, kill, update, clear,
+    /** Make the pooled explosions visible (at a live age) for shader warm-up. */
+    warmUp: () => {
+      for (const b of pool) {
+        b.age.value = 0.5;
+        b.update();
+        b.group.position.y = -40;
+      }
+      return () => {
+        for (const b of pool) {
+          b.age.value = 99;
+          b.update();
+        }
+      };
+    },
     has: (id: string) => ships.has(id),
     cells: (id: string) => ships.get(id)?.cells,
     mid: (id: string) => ships.get(id)?.mid,
