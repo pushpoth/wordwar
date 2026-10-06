@@ -43,8 +43,9 @@ Open in phase 0:
 
 ## Active plan
 
-[Phase 0 · visual test scene](plans/phase-0-visual-test-scene.md): one static
-diorama scene to prove the Word War look and choose the renderer.
+[Phase 1 · playable mission](plans/phase-1-playable-mission.md): the phase 0
+diorama becomes a playable 10×10 mission on the engine ported from Typemariner.
+Phase 0's plan is archived; its open items are listed above.
 
 ## Roadmap
 

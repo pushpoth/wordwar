@@ -1,3 +1,5 @@
+> **Archived 2026-10-06.** Closed by the user moving on to gameplay after three review rounds; all build steps done, renderer chosen (see decisions.md). What is still true lives in status.md.
+
 # Phase 0 · Visual test scene
 
 ## Intent
