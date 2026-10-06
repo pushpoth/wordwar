@@ -101,48 +101,56 @@ export function createExplosion(seed = 1) {
     spawn: (r) => {
       const d = unitDir(r, 0.55);
       const sp = 0.25 + r() * 0.55;
-      return { v: [d[0] * sp, 0.55 + r() * 0.75, d[2] * sp], delay: r() * 0.9, life: 2.6 + r() * 1.6, size: 0.55 + r() * 0.5 };
+      return { v: [d[0] * sp, 0.55 + r() * 0.75, d[2] * sp], delay: 0.1 + r() * 1.1, life: 2.8 + r() * 1.6, size: 0.5 + r() * 0.45 };
     },
   }, 'normal', ({ a, t, vel, par }) => {
     const drag = float(1).sub(a.mul(-0.6).exp()).div(0.6);
     const pos = vel.mul(drag).add(vec3(0.25, 0, 0.1).mul(a.mul(a).mul(0.12)));
     const size = par.z.mul(t.mul(2.2).add(0.6));
     const lit = smoothstep(0.35, 0.0, t);
-    const color = mix(vec3(0.07, 0.07, 0.075), vec3(0.95, 0.42, 0.12), lit.mul(0.8));
-    const alpha = smoothstep(0.0, 0.08, t).mul(smoothstep(1.0, 0.45, t)).mul(0.78).mul(softDisc(par.w));
+    const color = mix(vec3(0.035, 0.035, 0.04), vec3(0.7, 0.28, 0.08), lit.mul(0.7));
+    const alpha = smoothstep(0.0, 0.08, t).mul(smoothstep(1.0, 0.45, t)).mul(0.9).mul(softDisc(par.w));
     return { pos, size, color, alpha };
   });
 
   // Water column: white spray thrown up and falling back.
   sprites({
-    count: 60,
+    count: 44,
     spawn: (r) => {
-      const d = unitDir(r, 0.85);
-      const sp = 1.4 + r() * 2.2;
-      return { v: [d[0] * sp * 0.35, d[1] * sp, d[2] * sp * 0.35], delay: r() * 0.12, life: 1.1 + r() * 0.6, size: 0.18 + r() * 0.22 };
+      const d = unitDir(r, 0.9);
+      const sp = 1.6 + r() * 2.0;
+      return { v: [d[0] * sp * 0.22, d[1] * sp, d[2] * sp * 0.22], delay: 0.05 + r() * 0.12, life: 1.0 + r() * 0.5, size: 0.08 + r() * 0.12 };
     },
   }, 'normal', ({ a, t, vel, par }) => {
     const pos = vel.mul(a).add(gravity.mul(a.mul(a).mul(0.5)));
     const size = par.z.mul(t.mul(1.5).add(0.7));
     const color = vec3(0.86, 0.93, 0.97);
-    const alpha = smoothstep(1.0, 0.5, t).mul(0.85).mul(softDisc(par.w, 1.4)).mul(pos.y.greaterThan(-0.05).select(float(1), float(0)));
+    const alpha = smoothstep(1.0, 0.5, t).mul(0.7).mul(softDisc(par.w, 1.4)).mul(pos.y.greaterThan(-0.05).select(float(1), float(0)));
     return { pos, size, color, alpha };
   });
 
-  // Fireball: bright additive puffs, white-hot to orange to deep red.
+  // Fireball: noisy heat ramp per puff — yellow-white core, orange body,
+  // deep red rim and sooty edges. Normal blending keeps the colour saturated.
   sprites({
-    count: 34,
+    count: 46,
     spawn: (r) => {
       const d = unitDir(r, 0.35);
-      const sp = 0.5 + r() * 1.3;
-      return { v: [d[0] * sp, d[1] * sp * 0.9 + 0.3, d[2] * sp], delay: r() * 0.08, life: 0.7 + r() * 0.6, size: 0.5 + r() * 0.55 };
+      const sp = 0.45 + r() * 1.2;
+      return { v: [d[0] * sp, d[1] * sp * 0.9 + 0.35, d[2] * sp], delay: r() * 0.1, life: 0.8 + r() * 0.7, size: 0.32 + r() * 0.4 };
     },
-  }, 'add', ({ a, t, vel, par }) => {
+  }, 'normal', ({ a, t, vel, par }) => {
     const drag = float(1).sub(a.mul(-2.4).exp()).div(2.4);
-    const pos = vel.mul(drag);
-    const size = par.z.mul(smoothstep(0, 0.25, t).mul(1.3).add(0.35));
-    const color = mix(mix(vec3(2.2, 1.7, 1.05), vec3(1.6, 0.48, 0.1), smoothstep(0.04, 0.3, t)), vec3(0.45, 0.07, 0.02), smoothstep(0.35, 1, t));
-    const alpha = smoothstep(1, 0.3, t).mul(softDisc(par.w, 1.2)).mul(0.6);
+    const pos = vel.mul(drag).add(vec3(0, a.mul(a).mul(0.25), 0));
+    const size = par.z.mul(smoothstep(0, 0.2, t).mul(1.4).add(0.45));
+    const d = uv().sub(0.5).length().mul(2);
+    const n = mx_noise_float(vec3(uv().mul(4.5), par.w.mul(31).add(a.mul(1.5))));
+    const heat = clamp(float(1).sub(d.mul(1.15)).add(n.mul(0.55)).sub(t.mul(1.05)), 0, 1);
+    const color = mix(
+      mix(vec3(0.05, 0.035, 0.03), vec3(0.9, 0.12, 0.02), smoothstep(0.0, 0.25, heat)),
+      mix(vec3(2.4, 0.75, 0.12), vec3(3.4, 2.6, 1.3), smoothstep(0.6, 0.95, heat)),
+      smoothstep(0.2, 0.55, heat),
+    );
+    const alpha = smoothstep(0.02, 0.16, heat.add(float(0.12).mul(float(1).sub(t)))).mul(smoothstep(1.0, 0.7, t)).mul(smoothstep(1.0, 0.75, d));
     return { pos, size, color, alpha };
   });
 
@@ -165,11 +173,11 @@ export function createExplosion(seed = 1) {
   // Debris: dark tumbling hull chunks on ballistic arcs.
   {
     const e: Emitter = {
-      count: 26,
+      count: 34,
       spawn: (r) => {
         const d = unitDir(r, 0.45);
         const sp = 1.6 + r() * 2.4;
-        return { v: [d[0] * sp, d[1] * sp, d[2] * sp], delay: r() * 0.05, life: 1.6 + r() * 0.8, size: 0.05 + r() * 0.08 };
+        return { v: [d[0] * sp, d[1] * sp, d[2] * sp], delay: r() * 0.05, life: 1.6 + r() * 0.8, size: 0.025 + r() * 0.05 };
       },
     };
     const { vel, par } = attributes(e, rand);

@@ -10,9 +10,9 @@ from ww import *  # noqa: E402,F403
 
 reset()
 
-hull_grey = mat("hull", "#5d6870", rough=0.55, metal=0.25)
-super_grey = mat("superstructure", "#79848c", rough=0.5, metal=0.2)
-deck = mat("deck", "#3a4045", rough=0.8)
+hull_grey = mat("hull", "#46525a", rough=0.55, metal=0.3)
+super_grey = mat("superstructure", "#5c676f", rough=0.5, metal=0.25)
+deck = mat("deck", "#2e3337", rough=0.8)
 antifoul = mat("antifouling", "#6a2620", rough=0.7)
 boot = mat("boot_top", "#17191c", rough=0.6)
 black = mat("black", "#15171a", rough=0.5, metal=0.3)

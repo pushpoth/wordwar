@@ -2,8 +2,15 @@ import { MathUtils, PerspectiveCamera, Vector3 } from 'three/webgpu';
 import { LOOK } from '../config/look';
 
 /** Fixed diorama camera looking down at the board centre. */
+/** Named framings for review shots: `?view=close` frames the explosion. */
+const VIEWS: Record<string, { distance: number; elevationDeg: number; azimuthDeg: number; target: [number, number, number] }> = {
+  close: { distance: 9, elevationDeg: 30, azimuthDeg: -40, target: [0.6, 0.6, 0.6] },
+  ship: { distance: 7, elevationDeg: 24, azimuthDeg: -20, target: [2.2, 0.5, 3.5] },
+};
+
 export function createCamera(aspect: number) {
-  const c = LOOK.camera;
+  const view = VIEWS[new URLSearchParams(location.search).get('view') ?? ''];
+  const c = view ? { ...LOOK.camera, ...view, targetOffset: view.target } : LOOK.camera;
   const camera = new PerspectiveCamera(c.fov, aspect, 0.5, 400);
   const target = new Vector3(...c.targetOffset);
   const el = MathUtils.degToRad(c.elevationDeg);

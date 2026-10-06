@@ -34,18 +34,20 @@ renderer.
 
 ## Build order
 
-1. Scaffold the project and pin Node. Install Blender and pin its version in `status.md`.
-2. Blender pipeline: build the buoy first, end to end, including bevels, UVs,
+1. ✅ Scaffold the project and pin Node. Install Blender and pin its version in `status.md`.
+2. ✅ Blender pipeline: build the buoy first, end to end, including bevels, UVs,
    baked AO and normal maps, PBR materials and GLB export. It's the smallest
    asset that still exercises every step.
-3. Scene shell on `WebGPURenderer`: camera framing like the reference, sky and
+   # Amended: 2026-10-06 AO is baked to vertex colours instead of textures, and
+   normal-map baking is deferred; geometry carries the detail for now.
+3. ✅ Scene shell on `WebGPURenderer`: camera framing like the reference, sky and
    lighting, post-processing.
-4. Ocean.
-5. Island, lighthouse and submarine assets.
-6. Enemy warship asset.
-7. Board grid, X tiles and sonar ring.
-8. Word billboard.
-9. Explosion effect.
+4. ✅ Ocean.
+5. ✅ Island, lighthouse and submarine assets.
+6. ✅ Enemy warship asset.
+7. ✅ Board grid, X tiles and sonar ring.
+8. ✅ Word billboard.
+9. ✅ Explosion effect.
 10. Renderer comparison: run the scene on both the WebGPU and the WebGL2
     backend, then record the winner in `decisions.md`.
 
