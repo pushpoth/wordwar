@@ -14,8 +14,9 @@ Open in phase 0:
   Headless screenshots use software WebGL, so they prove nothing about speed.
   Open the page on the dev machine, read the fps overlay with and without
   `?backend=webgl`, and record the result in `decisions.md`.
-- **Vercel previews** need the CLI logged in (`npx vercel login`), then
-  `npm run deploy:preview`. The `wordwar` project exists in the `pushpoth` team.
+- **Deploys:** `npm run deploy:preview` builds locally and uploads a preview
+  to the `wordwar` Vercel project (team `pushpoth`). Preview URLs need a
+  Vercel login; the public production alias is https://wordwar-pi.vercel.app.
 - **Art gaps against the reference:** the islands still read as low-poly toys,
   ships lack weathering and wakes, and the smoke plume is light grey and faceted.
 

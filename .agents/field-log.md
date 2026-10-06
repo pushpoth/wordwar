@@ -21,7 +21,7 @@ happened, and what to do about it.
   packages one at a time worked.
 
 ## 2026-10-06 · Vercel previews can't be pushed without a CLI login
-- **Status:** open
+- **Status:** fixed (user ran `npx vercel login`; repo linked with `vercel link --project wordwar --scope pushpoth`)
 - The Vercel connector can create projects but only deploys files sent inline,
   which can't carry a 1 MB bundle. The CLI (`vercel`, a dev dependency) needs
   `npx vercel login` once; `gh` auth is also invalid, so Git-based deploys are out too.
@@ -30,3 +30,10 @@ happened, and what to do about it.
 - **Status:** open
 - The third of three back-to-back `npm run screenshot` runs died with SIGKILL.
   Single runs since have been fine. If it recurs, check memory and lower `--w/--h`.
+
+## 2026-10-06 · The first Vercel deploy went to production, not preview
+- **Status:** wontfix (Vercel behaviour)
+- A project's first deployment is always assigned to production, so
+  `npm run deploy:preview` published to https://wordwar-pi.vercel.app. Later
+  runs create protected preview URLs (they need a Vercel login to view); the
+  production alias stays public.

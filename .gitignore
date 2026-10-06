@@ -5,3 +5,4 @@ screenshots/
 *.blend1
 .env*
 !.env.example
+.vercel
