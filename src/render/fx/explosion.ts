@@ -106,11 +106,14 @@ export function createExplosion(seed = 1) {
     },
   }, 'normal', ({ a, t, vel, par }) => {
     const drag = float(1).sub(a.mul(-0.6).exp()).div(0.6);
-    const pos = vel.mul(drag).add(vec3(0.25, 0, 0.1).mul(a.mul(a).mul(0.12)));
-    const size = par.z.mul(t.mul(2.2).add(0.6));
+    // Starts above the deck so puffs never slice through the water plane.
+    const pos = vel.mul(drag).add(vec3(0.25, 0.35, 0.1).mul(vec3(a.mul(a).mul(0.12), 1, a.mul(a).mul(0.12))));
+    const size = par.z.mul(t.mul(1.6).add(0.55));
     const lit = smoothstep(0.35, 0.0, t);
-    const color = mix(vec3(0.035, 0.035, 0.04), vec3(0.7, 0.28, 0.08), lit.mul(0.7));
-    const alpha = smoothstep(0.0, 0.08, t).mul(smoothstep(1.0, 0.45, t)).mul(0.9).mul(softDisc(par.w));
+    const color = mix(mix(vec3(0.06, 0.06, 0.065), vec3(0.16, 0.17, 0.19), t), vec3(0.7, 0.28, 0.08), lit.mul(0.7));
+    // Thin out as each puff spreads, so the plume stays translucent.
+    const alpha = smoothstep(0.0, 0.08, t).mul(smoothstep(1.0, 0.4, t)).mul(float(0.95).sub(t.mul(0.45)))
+      .mul(softDisc(par.w)).mul(gauss().mul(0.6).add(0.4));
     return { pos, size, color, alpha };
   });
 

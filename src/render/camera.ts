@@ -10,7 +10,8 @@ const VIEWS: Record<string, { distance: number; elevationDeg: number; azimuthDeg
 
 const SPIN_DEG_PER_S = 70;
 const TILT_DEG_PER_S = 35;
-const ELEVATION_LIMITS = [18, 82] as const;
+// Low angles reveal the horizon and the empty sea beyond the scenery; keep above it.
+const ELEVATION_LIMITS = [36, 82] as const;
 
 /**
  * Diorama camera orbiting the board centre. Left/right arrows spin it around,

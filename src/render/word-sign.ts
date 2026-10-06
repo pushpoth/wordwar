@@ -1,14 +1,13 @@
 import {
-  CanvasTexture, Group, Mesh, MeshBasicNodeMaterial, MeshStandardNodeMaterial, PlaneGeometry, SRGBColorSpace,
+  CanvasTexture, Group, Mesh, MeshStandardNodeMaterial, PlaneGeometry, SRGBColorSpace,
   Vector3, type Camera,
 } from 'three/webgpu';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
-import { float, max, mix, sin, smoothstep, texture, uniform, uv, vec3, vec4 } from 'three/tsl';
-import { simTime as time } from './clock';
+import { max, mix, smoothstep, texture, uniform, uv, vec3, vec4 } from 'three/tsl';
 
 const glyphCache = new Map<string, CanvasTexture>();
 
-/** Crisp white glyph on transparent; the bloom pass adds a light halo. */
+/** Crisp white glyph on transparent, used as a paint stencil. */
 function glyph(ch: string) {
   let tex = glyphCache.get(ch);
   if (tex) return tex;
@@ -47,7 +46,7 @@ export function createWordSign(word: string) {
   const revealedU: ReturnType<typeof uniform>[] = [];
   const tiles: Group[] = [];
 
-  [...word.toUpperCase()].forEach((ch, i) => {
+  [...word.toUpperCase()].forEach((ch) => {
     const tile = new Group();
     const slab = new Mesh(slabGeo, slabMat);
     slab.castShadow = true;
@@ -57,13 +56,13 @@ export function createWordSign(word: string) {
     revealedU.push(rev);
     const letterTex = texture(glyph(ch));
     const blankTex = texture(glyph('_'));
-    const face = new MeshBasicNodeMaterial({ transparent: true, depthWrite: false });
-    const a = mix(blankTex.a.mul(0.55), letterTex.a, rev);
-    const flicker = sin(time.mul(9).add(i * 1.7)).mul(0.04).add(1);
-    const hot = vec3(1.9, 1.62, 1.18).mul(flicker);
-    const dim = vec3(1.3, 0.75, 0.18);
-    face.colorNode = vec4(mix(dim, hot, rev), 1);
-    face.opacityNode = a.mul(float(1));
+    // Painted letters, lit by the scene like the slab they sit on: only the
+    // rim glows. Hidden letters show a faded amber stencil underscore.
+    const face = new MeshStandardNodeMaterial({ roughness: 0.62, metalness: 0, alphaTest: 0.5 });
+    const paint = vec3(0.86, 0.82, 0.72);
+    const stencil = vec3(0.55, 0.32, 0.06);
+    face.colorNode = vec4(mix(stencil, paint, rev), 1);
+    face.opacityNode = mix(blankTex.a.mul(0.9), letterTex.a, rev);
     const faceMesh = new Mesh(faceGeo, face);
     faceMesh.position.z = 0.082;
     faceMesh.renderOrder = 4;

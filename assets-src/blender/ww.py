@@ -401,7 +401,39 @@ def build(objects, name, ao_distance=0.25):
     export(ob, out_path(), ao_distance)
 
 
+def build_groups(groups, name, ao_distance=0.25, origins=None):
+    """Export several named objects in one .glb: each group of parts is joined
+    into one object whose origin sits at its bounds centre (or at
+    origins[group]), so the game can move and spin the pieces independently."""
+    obs = []
+    for gname, gparts in groups.items():
+        if not gparts:
+            continue
+        ob = join(gparts, gname)
+        _activate(ob)
+        if origins and gname in origins:
+            bpy.context.scene.cursor.location = origins[gname]
+            bpy.ops.object.origin_set(type="ORIGIN_CURSOR")
+        else:
+            bpy.ops.object.origin_set(type="ORIGIN_GEOMETRY", center="BOUNDS")
+        smooth_by_angle(ob)
+        bake_ao(ob, ao_distance)
+        obs.append(ob)
+    for o in bpy.context.selected_objects:
+        o.select_set(False)
+    for ob in obs:
+        ob.select_set(True)
+    path = out_path()
+    bpy.ops.export_scene.gltf(
+        filepath=path, export_format="GLB", use_selection=True, export_apply=True, export_yup=True,
+        export_normals=True, export_materials="EXPORT", export_vertex_color="ACTIVE", export_image_format="NONE",
+    )
+    verts = sum(len(o.data.vertices) for o in obs)
+    print(f"[ww] wrote {path} · {verts} verts · {len(obs)} pieces")
+
+
 __all__ = [
+    "build_groups",
     "reset", "out_path", "mat", "box", "cyl", "sphere", "torus", "lathe", "loft", "strut",
     "icosphere", "gable_roof", "tapered_block", "displace", "decimate", "paint_by_slope", "rng",
     "array_copies", "mirror_y", "add_bevel", "apply_all", "join", "smooth_by_angle",

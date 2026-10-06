@@ -23,11 +23,21 @@ Open in phase 0:
 - **Frame-rate risk:** this round added particles (about 600 sprites), island
   triangles (about 44k across three models) and per-pixel hull and island
   loops in the water shader. Re-measure on the dev machine before adding more.
+- **Round 3 review (2026-10-06)** addressed: distant water tiling broken up
+  with macro colour noise and distance-faded ripples; camera tilt floor raised
+  to 36°; destroyed ships swap to `destroyer_wreck` (bow and stern fold into a
+  V and sink, fittings fly clear) only at the moment of the kill; billboard
+  letters are matte paint with only the rim glowing; the sub turns about a
+  forward pivot with drift.
 - **Known gaps:** the sun glare at low camera angles blows out to white; the
-  sub's wake is straight while its path curves; weathering reads as dots up close.
-- **Deploys:** `npm run deploy:preview` builds locally and uploads a preview
-  to the `wordwar` Vercel project (team `pushpoth`). Preview URLs need a
-  Vercel login; the public production alias is https://wordwar-pi.vercel.app.
+  sub's wake is straight while its path curves; weathering reads as dots up close;
+  the wreck stops burning once the explosion's fire is gone.
+- **Repo:** https://github.com/pushpoth/wordwar (private). The Vercel project
+  builds every pushed branch; PR #1 holds phase 0. Work continues on `phase-1-gameplay`.
+- **Deploys:** pushing a branch to GitHub builds a Vercel preview (team
+  `pushpoth`, project `wordwar`); `main` is production at
+  https://wordwar-pi.vercel.app. `npm run deploy:preview` still works for
+  local-only builds. Preview URLs need a Vercel login.
 - **Art gaps against the reference:** the islands still read as low-poly toys,
   ships lack weathering and wakes, and the smoke plume is light grey and faceted.
 

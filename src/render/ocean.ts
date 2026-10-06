@@ -105,7 +105,10 @@ export function createOcean(sunDir: Vector3, opts: { board?: Board; hulls?: Hull
   const g = gerstner(base, calm, sea);
   const r1 = mx_noise_vec3(vec3(base.mul(2.6).add(vec2(time.mul(0.21), time.mul(0.13))), time.mul(0.25)));
   const r2 = mx_noise_vec3(vec3(base.mul(7.5).sub(vec2(time.mul(0.33), time.mul(-0.18))), time.mul(0.4)));
-  const rip = r1.xz.mul(0.65).add(r2.xz.mul(0.35)).mul(ripple).mul(float(1).sub(calm.mul(0.5)));
+  // Fade fine ripples with distance so they don't alias into a visible grid.
+  const camDist = cameraPosition.sub(positionWorld).length();
+  const near = smoothstep(55, 18, camDist);
+  const rip = r1.xz.mul(0.65).add(r2.xz.mul(near.mul(0.35))).mul(ripple).mul(float(1).sub(calm.mul(0.5)));
   const n = normalize(g.normal.add(vec3(rip.x, 0, rip.y)));
   m.normalNode = transformNormalToView(n);
 
@@ -114,7 +117,12 @@ export function createOcean(sunDir: Vector3, opts: { board?: Board; hulls?: Hull
   const mid = vec3(...color(OCEAN.mid));
   const shallow = vec3(...color(OCEAN.shallow));
   const crest = smoothstep(-0.06, 0.08, g.height);
-  let water = mix(deep, mid, crest.mul(0.55).add(0.25));
+  // Large, slow colour variation (wind patches, depth changes) breaks up the
+  // repeating interference pattern of the six swell trains.
+  const macro = mx_noise_float(vec3(base.mul(0.045), time.mul(0.015))).mul(0.5).add(0.5);
+  const patch = mx_noise_float(vec3(base.mul(0.13).add(7.3), time.mul(0.03))).mul(0.5).add(0.5);
+  const crestMix = crest.mul(mix(float(0.25), float(0.6), patch)).add(macro.mul(0.3).add(0.1));
+  let water = mix(deep, mid, crestMix);
   const shallowAmt = smoothstep(0.9, 0.0, shore.add(mx_noise_float(vec3(base.mul(1.3), 0)).mul(0.35))).mul(0.8);
   water = mix(water, shallow, shallowAmt);
 

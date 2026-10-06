@@ -6,6 +6,7 @@ import { createBoardLabels } from '../render/labels';
 import type { HullFootprint, Hulls } from '../render/hulls';
 import type { IslandShore } from '../render/ocean';
 import { createWordSign } from '../render/word-sign';
+import { createWreck } from '../render/wreck';
 import { footprint, ride, type Floater } from './buoyancy';
 
 type ShipSpec = { word: string; col: number; row: number; dir: 'h' | 'v'; revealed: string };
@@ -37,7 +38,11 @@ const BUOYS: [number, number][] = [[-6.0, 4.6], [6.1, -1.4], [3.2, 6.1], [-2.6, 
 
 /** Destroyer model dimensions in cells (bow at +X), before per-ship scaling. */
 const DESTROYER = { halfLength: 2.1, halfBeam: 0.29 };
-const SUB = { halfLength: 1.25, halfBeam: 0.172, scale: 0.95, cruiseRadius: 1.1, cruiseRate: 0.22 };
+const SUB = {
+  halfLength: 1.25, halfBeam: 0.172, scale: 0.95, cruiseRadius: 1.1, cruiseRate: 0.22,
+  /** Pivot point as a fraction of half length ahead of centre; drift angle into the turn. */
+  pivot: 0.45, driftDeg: 11,
+};
 
 export async function buildDiorama(scene: Scene, board: Board, hulls: Hulls) {
   const root = new Group();
@@ -72,19 +77,22 @@ export async function buildDiorama(scene: Scene, board: Board, hulls: Hulls) {
   const cellsOf = (s: ShipSpec) =>
     [...s.word].map((_, i) => board.cellCenter(s.dir === 'h' ? s.col + i : s.col, s.dir === 'h' ? s.row : s.row + i));
 
-  async function placeShip(s: ShipSpec, sinking = false) {
+  async function placeShip(s: ShipSpec) {
     const ship = await loadModel('destroyer');
     const cells = cellsOf(s);
     const mid = cells[0].clone().add(cells[cells.length - 1]).multiplyScalar(0.5);
     const scale = (s.word.length * 0.95) / (DESTROYER.halfLength * 2);
-    ship.scale.setScalar(scale);
-    root.add(ship);
-    floaters.push({
-      obj: ship, x: mid.x, z: mid.z, yaw: s.dir === 'h' ? 0 : -Math.PI / 2,
+    // The floater carries a container so a wreck can replace the hull in place.
+    const carrier = new Group();
+    carrier.add(ship);
+    carrier.scale.setScalar(scale);
+    root.add(carrier);
+    const floater: Floater = {
+      obj: carrier, x: mid.x, z: mid.z, yaw: s.dir === 'h' ? 0 : -Math.PI / 2,
       hull: { halfLength: DESTROYER.halfLength * scale, halfBeam: DESTROYER.halfBeam * scale },
-      ...(sinking ? { lift: -0.1, list: { roll: 0.16, pitch: -0.05 } } : {}),
-    });
-    return { ship, cells, mid };
+    };
+    floaters.push(floater);
+    return { ship, carrier, floater, cells, mid, scale };
   }
 
   // Discovered enemies; the first is the current torpedo target.
@@ -99,8 +107,14 @@ export async function buildDiorama(scene: Scene, board: Board, hulls: Hulls) {
   sign.setRevealed([...SHIPS[0].revealed].map((ch) => ch !== '_'));
   root.add(sign.group);
 
-  // The ship being sunk, with the explosion on it.
-  const sunk = await placeShip(SUNK, true);
+  // The ship being sunk: the explosion, then the hull breaks in two and goes down.
+  const sunk = await placeShip(SUNK);
+  const wreck = createWreck(await loadModel('destroyer_wreck'), 5);
+  sunk.carrier.add(wreck.group);
+  wreck.loose.position.set(sunk.mid.x, 0, sunk.mid.z);
+  wreck.loose.rotation.y = sunk.floater.yaw;
+  wreck.loose.scale.setScalar(sunk.scale);
+  root.add(wreck.loose);
   for (const cell of sunk.cells) board.setCell(cell.x + board.size / 2 - 0.5, cell.z + board.size / 2 - 0.5, CELL.sunk);
   const boom = createExplosion(7);
   boom.group.position.set(sunk.mid.x + 0.3, 0.15, sunk.mid.z);
@@ -122,13 +136,33 @@ export async function buildDiorama(scene: Scene, board: Board, hulls: Hulls) {
   const labels = createBoardLabels(board.size);
   root.add(labels.group);
 
-  const BLAST_PERIOD = 4.5;
+  /** Demo loop: blast at 0 s, wreck sinks, the ship resets at the end. */
+  const BLAST_PERIOD = 10;
+  const BREAK_AT = 0.1;
   function update(t: number, dt: number, camera: Camera) {
+    // A hull turns about a pivot point near its bow: the bow tracks the path
+    // and points slightly into the turn while the stern skids outward.
     const th = t * SUB.cruiseRate + 2.2;
-    subFloat.x = subHome.x + Math.cos(th) * SUB.cruiseRadius;
-    subFloat.z = subHome.z + Math.sin(th) * SUB.cruiseRadius;
-    subFloat.yaw = Math.atan2(-Math.cos(th), -Math.sin(th));
-    board.uniforms.sonarCenter.value.set(subFloat.x, subFloat.z);
+    const px = subHome.x + Math.cos(th) * SUB.cruiseRadius;
+    const pz = subHome.z + Math.sin(th) * SUB.cruiseRadius;
+    const drift = Math.tan(SUB.driftDeg * Math.PI / 180);
+    let fx = -Math.sin(th) - Math.cos(th) * drift;
+    let fz = Math.cos(th) - Math.sin(th) * drift;
+    const fl = Math.hypot(fx, fz);
+    fx /= fl;
+    fz /= fl;
+    const pivot = SUB.halfLength * SUB.scale * SUB.pivot;
+    subFloat.x = px - fx * pivot;
+    subFloat.z = pz - fz * pivot;
+    subFloat.yaw = Math.atan2(-fz, fx);
+    board.uniforms.sonarCenter.value.set(px, pz);
+
+    const age = t % BLAST_PERIOD;
+    const wreckAge = age - BREAK_AT;
+    sunk.ship.visible = wreckAge < 0;
+    wreck.update(wreckAge);
+    sunk.floater.lift = wreckAge < 0 ? 0 : -wreck.sinkDepth(wreckAge);
+    sunk.floater.list = wreckAge < 0 ? undefined : wreck.list(wreckAge);
 
     const prints: HullFootprint[] = [];
     for (const f of floaters) {
@@ -140,7 +174,6 @@ export async function buildDiorama(scene: Scene, board: Board, hulls: Hulls) {
 
     sign.update(camera, t);
     labels.update(camera);
-    const age = t % BLAST_PERIOD;
     boom.age.value = age;
     boom.update();
     board.uniforms.blastAge.value = age;
