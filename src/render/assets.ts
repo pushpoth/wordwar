@@ -100,7 +100,7 @@ export function loadModel(name: string): Promise<Object3D> {
   return p.then((scene) => scene.clone(true));
 }
 
-/** Start loading models ahead of first use. */
-export function preloadModels(names: string[]) {
-  return Promise.all(names.map((n) => loadModel(n)));
+/** Start loading models ahead of first use; `onEach` fires as each one finishes. */
+export function preloadModels(names: string[], onEach?: (name: string) => void) {
+  return Promise.all(names.map((n) => loadModel(n).then((m) => { onEach?.(n); return m; })));
 }

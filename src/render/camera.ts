@@ -1,5 +1,6 @@
 import { MathUtils, PerspectiveCamera, Vector3 } from 'three/webgpu';
 import { LOOK } from '../config/look';
+import { tune } from '../config/tunables';
 
 /** Named framings for review shots: `?view=close` frames the explosion. */
 const VIEWS: Record<string, { distance: number; elevationDeg: number; azimuthDeg: number; target: [number, number, number] }> = {
@@ -10,8 +11,7 @@ const VIEWS: Record<string, { distance: number; elevationDeg: number; azimuthDeg
 
 const SPIN_DEG_PER_S = 70;
 const TILT_DEG_PER_S = 35;
-// Low angles reveal the horizon and the empty sea beyond the scenery; keep above it.
-const ELEVATION_LIMITS = [36, 82] as const;
+const MAX_TILT = 82;
 
 /**
  * Diorama camera orbiting the board centre. Left/right arrows spin it around,
@@ -21,9 +21,20 @@ const ELEVATION_LIMITS = [36, 82] as const;
 export function createCamera(aspect: number) {
   const params = new URLSearchParams(location.search);
   const view = VIEWS[params.get('view') ?? ''];
-  const c = view ? { ...LOOK.camera, ...view, targetOffset: view.target } : LOOK.camera;
+  // Review views are fixed framings; the game camera follows the tuner.
+  const c = view
+    ? { ...LOOK.camera, ...view, targetOffset: view.target }
+    : {
+        fov: tune.get('camera.fov'), distance: tune.get('camera.distance'),
+        elevationDeg: tune.get('camera.elevation'), azimuthDeg: tune.get('camera.azimuth'),
+        targetOffset: [0, tune.get('camera.targetY'), tune.get('camera.targetZ')] as [number, number, number],
+      };
   const camera = new PerspectiveCamera(c.fov, aspect, 0.5, 400);
   const target = new Vector3(...c.targetOffset);
+  let distance = c.distance;
+  // Low angles reveal the horizon and the empty sea beyond the scenery; keep above it.
+  const minTilt = () => tune.get('camera.minTilt');
+  const onMove = new Set<(distance: number) => void>();
 
   const orbit = {
     az: Number(params.get('az') ?? c.azimuthDeg),
@@ -45,11 +56,23 @@ export function createCamera(aspect: number) {
     const el = MathUtils.degToRad(orbit.el);
     const az = MathUtils.degToRad(orbit.az);
     camera.position.set(
-      target.x + c.distance * Math.cos(el) * Math.sin(az),
-      target.y + c.distance * Math.sin(el),
-      target.z + c.distance * Math.cos(el) * Math.cos(az),
+      target.x + distance * Math.cos(el) * Math.sin(az),
+      target.y + distance * Math.sin(el),
+      target.z + distance * Math.cos(el) * Math.cos(az),
     );
     camera.lookAt(target);
+    for (const fn of onMove) fn(distance);
+  }
+
+  if (!view) {
+    tune.onAny(['camera.distance', 'camera.targetY', 'camera.targetZ'], () => {
+      distance = tune.get('camera.distance');
+      target.set(0, tune.get('camera.targetY'), tune.get('camera.targetZ'));
+      place();
+    });
+    tune.on('camera.elevation', (v) => { orbit.el = v as number; place(); });
+    tune.on('camera.azimuth', (v) => { orbit.az = v as number; place(); });
+    tune.on('camera.fov', () => fitFov(camera, camera.aspect));
   }
 
   function update(dt: number) {
@@ -60,18 +83,23 @@ export function createCamera(aspect: number) {
     orbit.vEl += (wantEl * TILT_DEG_PER_S - orbit.vEl) * ease;
     if (Math.abs(orbit.vAz) < 0.01 && Math.abs(orbit.vEl) < 0.01) return;
     orbit.az = (orbit.az + orbit.vAz * dt) % 360;
-    orbit.el = MathUtils.clamp(orbit.el + orbit.vEl * dt, ...ELEVATION_LIMITS);
+    orbit.el = MathUtils.clamp(orbit.el + orbit.vEl * dt, minTilt(), MAX_TILT);
     place();
   }
 
   place();
   fitFov(camera, aspect);
-  return { camera, target, update, azimuth: () => orbit.az };
+  return {
+    camera, target, update,
+    azimuth: () => orbit.az,
+    /** Called with the camera distance whenever the camera moves. */
+    onMove: (fn: (distance: number) => void) => onMove.add(fn),
+  };
 }
 
 /** Keep the board in frame on narrow screens by widening the vertical FOV. */
 export function fitFov(camera: PerspectiveCamera, aspect: number) {
-  const base = LOOK.camera.fov;
+  const base = new URLSearchParams(location.search).has('view') ? LOOK.camera.fov : tune.get('camera.fov');
   camera.aspect = aspect;
   camera.fov = aspect >= 1.4 ? base : base * Math.min(1.9, 1.4 / aspect);
   camera.updateProjectionMatrix();

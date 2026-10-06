@@ -5,6 +5,7 @@
 //   npm run screenshot -- --query "view=close" --frames 90
 //   npm run screenshot -- --url https://<preview>.vercel.app
 //   npm run screenshot -- --hud --no-pin --keys "E,T,A,Tab" --key-frames 12   (play, then shoot)
+//   …--keys "E,A,Reload"   ("Reload" reloads the page, keeping its storage)
 //
 // Boots the Vite dev server in-process and drives the page with the headless
 // Chromium bundled inside @sparticuz/chromium (software WebGL via SwiftShader),
@@ -81,6 +82,12 @@ try {
   );
   // Play: press each key, then let the scene run a few frames.
   for (const key of keys) {
+    if (key === 'Reload') {
+      // Reload the page (same browser storage) and wait for it to draw again.
+      await page.reload({ waitUntil: 'load', timeout: timeoutMs });
+      await page.waitForFunction((n) => (window.__ww?.frames ?? 0) >= n, { timeout: timeoutMs, polling: 250 }, frames);
+      continue;
+    }
     await page.keyboard.press(key.length === 1 ? key.toUpperCase() : key);
     const target = (await page.evaluate(() => window.__ww?.frames ?? 0)) + keyFrames;
     await page.waitForFunction((n) => (window.__ww?.frames ?? 0) >= n, { timeout: timeoutMs, polling: 200 }, target);

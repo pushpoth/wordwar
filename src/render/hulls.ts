@@ -1,5 +1,6 @@
 import { Vector4, type Node as TslNode } from 'three/webgpu';
-import { abs, exp, float, max, mx_noise_float, sin, smoothstep, uniformArray, vec2, vec3 } from 'three/tsl';
+import { abs, exp, float, max, sin, smoothstep, texture, uniformArray, vec2 } from 'three/tsl';
+import { noiseTexture } from './util/noise-texture';
 import { simTime as time } from './clock';
 
 export const MAX_HULLS = 8;
@@ -55,8 +56,8 @@ export function createHulls() {
 
   /** Foam from hull contact and wakes, 0–1. */
   function foam(base: N2) {
-    const churn = mx_noise_float(vec3(base.mul(6.5), time.mul(0.9))).mul(0.5).add(0.5);
-    const fine = mx_noise_float(vec3(base.mul(14), time.mul(1.6))).mul(0.5).add(0.5);
+    const churn = texture(noiseTexture(), base.mul(0.26).add(vec2(time.mul(0.036), 0))).b;
+    const fine = texture(noiseTexture(), base.mul(0.55).sub(vec2(0, time.mul(0.06)))).r;
     let f: N1 = float(0);
     for (let i = 0; i < MAX_HULLS; i++) {
       const h = frame(base, i);

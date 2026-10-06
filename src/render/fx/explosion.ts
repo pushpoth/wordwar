@@ -6,6 +6,7 @@ import {
   clamp, float, instancedBufferAttribute, max, mix, mx_noise_float, positionLocal, rotate, smoothstep,
   uniform, uv, vec2, vec3, vec4,
 } from 'three/tsl';
+import { tune } from '../../config/tunables';
 
 type N1 = TslNode<'float'>;
 type N3 = TslNode<'vec3'>;
@@ -27,6 +28,9 @@ type Emitter = {
   /** Returns launch velocity, and params: delay, life, size, seed. */
   spawn: (r: () => number) => { v: [number, number, number]; delay: number; life: number; size: number };
 };
+
+/** Particle counts scale with the quality tier's density. */
+const density = () => tune.get('quality.particles');
 
 function attributes(e: Emitter, rand: () => number) {
   const vel = new Float32Array(e.count * 3);
@@ -89,7 +93,7 @@ export function createExplosion(seed = 1) {
     m.colorNode = vec4(out.color, 1);
     m.opacityNode = out.alpha.mul(l.alive);
     const s = new Sprite(m);
-    s.count = e.count;
+    s.count = Math.max(4, Math.round(e.count * density()));
     s.frustumCulled = false;
     s.renderOrder = blend === 'add' ? 3 : 2;
     group.add(s);
@@ -196,7 +200,7 @@ export function createExplosion(seed = 1) {
     const local = rotate(positionLocal.mul(par.z.mul(l.alive)).mul(vec3(1, 0.6, 1.6)), spin);
     m.positionNode = local.add(pos).add(vec3(0, max(float(-0.3).sub(pos.y), 0), 0));
     m.emissiveNode = vec3(2.2, 0.6, 0.1).mul(smoothstep(0.35, 0, l.t));
-    const mesh = new InstancedMesh(new BoxGeometry(1, 1, 1), m, e.count);
+    const mesh = new InstancedMesh(new BoxGeometry(1, 1, 1), m, Math.max(4, Math.round(e.count * density())));
     mesh.frustumCulled = false;
     mesh.castShadow = true;
     group.add(mesh);

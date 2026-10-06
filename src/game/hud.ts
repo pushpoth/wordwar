@@ -19,13 +19,15 @@ export type HudView = {
   intel: IntelRow[];
 };
 
-export type EndView = {
-  win: boolean;
-  score: number;
-  sunk: number;
-  total: number;
-  accuracy: number;
-  seconds: number;
+export type MenuAction = { label: string; key: string; run: () => void };
+
+/** A centred card with a title, optional stats and buttons: pause, mission end, and future screens. */
+export type MenuView = {
+  title: string;
+  subtitle?: string;
+  tone?: 'win' | 'lose' | 'neutral';
+  stats?: [string, string][];
+  actions: MenuAction[];
 };
 
 const KEY_ROWS = ['QWERTYUIOP', 'ASDFGHJKL', 'ZXCVBNM'];
@@ -39,11 +41,6 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls = '', html = '') 
 
 /** The game's heads-up display: plain DOM panels over the canvas. */
 export function createHud() {
-  const fonts = document.createElement('link');
-  fonts.rel = 'stylesheet';
-  fonts.href = 'https://fonts.googleapis.com/css2?family=Oxanium:wght@400;600;700&display=swap';
-  document.head.appendChild(fonts);
-
   const root = el('div', 'hud');
   const status = el('div', 'panel status');
   const intel = el('div', 'panel intel', '<div class="label">Target intel</div><ul></ul><div class="empty">No contacts. Type a letter to ping.</div>');
@@ -51,8 +48,12 @@ export function createHud() {
   const log = el('div', 'panel log');
   const mode = el('div', 'panel mode', '<div class="value"></div><div class="hint"></div>');
   const toast = el('div', 'panel toast', '<div><div class="value"></div><div class="sub"></div></div>');
-  const end = el('div', 'panel end');
-  root.append(status, intel, word, log, mode, toast, end);
+  const menuEl = el('div', 'panel menu');
+  const scrim = el('div', 'scrim');
+  const pauseBtn = el('button', 'pause-btn', '❚❚');
+  pauseBtn.title = 'Pause (Space)';
+  pauseBtn.setAttribute('aria-label', 'Pause');
+  root.append(status, intel, word, log, mode, toast, scrim, menuEl, pauseBtn);
   document.body.appendChild(root);
 
   const keys = word.querySelector('.keys')!;
@@ -120,25 +121,46 @@ export function createHud() {
     toastTimer = window.setTimeout(() => toast.classList.remove('show'), 2600);
   }
 
-  function showEnd(v: EndView | null) {
-    if (!v) {
-      end.className = 'panel end';
-      return;
-    }
-    end.className = `panel end show ${v.win ? 'win' : 'lose'}`;
-    end.innerHTML = `
-      <h2>${v.win ? 'MISSION COMPLETE' : 'MISSION FAILED'}</h2>
-      <div class="label">${v.win ? 'All enemy units sunk' : 'Out of torpedoes'}</div>
-      <dl>
-        <dt>Score</dt><dd>${v.score}</dd>
-        <dt>Units sunk</dt><dd>${v.sunk} of ${v.total}</dd>
-        <dt>Torpedo accuracy</dt><dd>${Math.round(v.accuracy * 100)}%</dd>
-        <dt>Time</dt><dd>${Math.floor(v.seconds / 60)}:${String(Math.floor(v.seconds % 60)).padStart(2, '0')}</dd>
-      </dl>
-      <div class="again">Press Enter for a new mission · R to replay this seed</div>`;
+  let menuActions: MenuAction[] = [];
+
+  /** Show a menu card, or hide it with null. */
+  function menu(v: MenuView | null) {
+    menuActions = v?.actions ?? [];
+    root.classList.toggle('menu-open', !!v);
+    if (!v) return;
+    menuEl.className = `panel menu ${v.tone ?? 'neutral'}`;
+    menuEl.innerHTML = `
+      <h2>${v.title}</h2>
+      ${v.subtitle ? `<div class="label">${v.subtitle}</div>` : ''}
+      ${v.stats ? `<dl>${v.stats.map(([k, val]) => `<dt>${k}</dt><dd>${val}</dd>`).join('')}</dl>` : ''}
+      <div class="actions"></div>`;
+    const box = menuEl.querySelector('.actions')!;
+    v.actions.forEach((a, i) => {
+      const b = el('button', i === 0 ? 'primary' : '', `${a.label}<kbd>${a.key}</kbd>`);
+      b.addEventListener('click', () => a.run());
+      box.appendChild(b);
+    });
+    (box.querySelector('button') as HTMLButtonElement | null)?.focus({ preventScroll: true });
   }
 
-  return { render, note, banner, showEnd };
+  /** Route a key to the open menu; returns true if it was handled. */
+  function menuKey(key: string) {
+    const k = key === ' ' ? 'Space' : key === 'Escape' ? 'Esc' : key.length === 1 ? key.toUpperCase() : key;
+    const hit = menuActions.find((a) => a.key.split('/').map((s) => s.trim()).includes(k));
+    hit?.run();
+    return menuActions.length > 0;
+  }
+
+  function onPause(fn: () => void) {
+    pauseBtn.addEventListener('click', fn);
+  }
+
+  /** Reveal the HUD once the scene is ready (it stays hidden behind the loader). */
+  function ready() {
+    root.classList.add('ready');
+  }
+
+  return { render, note, banner, menu, menuKey, onPause, ready, isMenuOpen: () => menuActions.length > 0 };
 }
 
 export type Hud = ReturnType<typeof createHud>;

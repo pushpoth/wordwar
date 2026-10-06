@@ -70,3 +70,17 @@ Append-only. Close an entry by changing its status; never delete one.
 - **Why:** Draw calls (one per material, doubled by shadows) were the main CPU
   cost. It rules out per-material textures; if a model ever needs a texture,
   give that node its own material instead of the shared one.
+
+## 2026-10-06 · Space pauses; letters stay game input
+- **Status:** active
+- **Decision:** Pause is Space, the ❚❚ HUD button, or the tab hiding. Typemariner-style
+  single-letter shortcuts are out: every letter is a radar or torpedo key.
+- **Why:** A letter shortcut would fire a ping or a torpedo by accident.
+
+## 2026-10-06 · Saves are a seed plus an action log
+- **Status:** active
+- **Decision:** Progress is saved as the seed, mission config and the list of
+  player actions stamped with the mission clock; load replays them through the
+  engine. Cheats (refills) aren't logged, so a cheated mission may restore differently.
+- **Why:** The engine is deterministic, so this is tiny and exact, and it needs
+  no serialisation of engine state that could drift as the engine changes.

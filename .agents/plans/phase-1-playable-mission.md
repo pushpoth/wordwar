@@ -18,6 +18,15 @@ to radar); hit, miss and kill feedback using the existing explosion and wreck;
 a minimal HUD (mode, battery, torpedoes, score, target word) and a mission-end
 card; `?seed=` for repeatable missions.
 
+**Slice 2 (prescriptive, agreed 2026-10-06) ✅ built, waiting on the user's device check:** save and restore progress
+(seed plus action log, replayed on load); a reusable menu panel used for
+pause, mission end and later UIs; pause when the tab hides; a loading progress
+bar; a dev tuner panel (`?tune`, Tweakpane, like Typemariner's) whose changes
+can be copied back into chat, with knobs for phone quality, depth of field and
+edge blur, camera, sun, sea and gameplay cheats; a phone quality tier; steadier
+adaptive resolution; a cheaper water shader (noise texture, per-vertex shore and
+hull distances).
+
 **Later slices (goals only):** sonar-ping and torpedo-run effects; the full HUD
 from the reference image (target intel, word-progress keyboard, sonar log,
 camera controls); touch input.

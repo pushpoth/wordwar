@@ -2,7 +2,12 @@
 
 ## Where things stand
 
-Phase 1 slice 1 is playable on `phase-1-gameplay`: a 10×10 mission on the
+Phase 1 slices 1 and 2 are on `phase-1-gameplay`. Slice 2 added: save and
+restore (seed plus action log in local storage, replayed on load), a pause
+menu (Space, the ❚❚ button, or leaving the tab) built on a reusable menu card,
+a loading progress bar, the dev tuner (`?tune`), a phone quality tier
+(`?quality=phone|desktop`), steadier adaptive resolution and a texture-based
+water shader. Slice 1: a 10×10 mission on the
 ported engine (`src/engine/`, 63 tests) driven by `src/game/` (controller,
 fleet, HUD). `?seed=` repeats a board; `?demo` shows the fixed phase 0 diorama.
 Phase 0, on PR #1: a static mid-battle

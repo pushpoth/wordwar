@@ -1,9 +1,11 @@
 import { Mesh, MeshStandardNodeMaterial, PlaneGeometry, Vector4, type Node as TslNode, type Vector3 } from 'three/webgpu';
 import {
-  cameraPosition, clamp, cos, dot, float, max, mix, mx_noise_float, mx_noise_vec3, normalize,
-  positionGeometry, positionWorld, pow, sin, smoothstep, transformNormalToView, uniform,
-  uniformArray, vec2, vec3,
+  cameraPosition, clamp, cos, dot, float, max, mix, normalize,
+  positionGeometry, positionWorld, pow, sin, smoothstep, texture, transformNormalToView, uniform,
+  uniformArray, vec2, vec3, vertexStage,
 } from 'three/tsl';
+import { noiseTexture } from './util/noise-texture';
+import { tune } from '../config/tunables';
 import type { Board } from './board';
 import type { Hulls } from './hulls';
 import { HULL_CALMING, SEA, WAVES } from './waves';
@@ -57,7 +59,7 @@ function gerstner(p: Node2, calm: Node, sea: Node) {
 }
 
 
-export function createOcean(sunDir: Vector3, opts: { board?: Board; hulls?: Hulls } = {}, extent = 90, segments = 256) {
+export function createOcean(sunDir: Vector3, opts: { board?: Board; hulls?: Hulls } = {}, extent = 90, segments = tune.get('quality.oceanSegments')) {
   const { board, hulls } = opts;
   const geo = new PlaneGeometry(extent, extent, segments, segments);
   geo.rotateX(-Math.PI / 2);
@@ -66,12 +68,15 @@ export function createOcean(sunDir: Vector3, opts: { board?: Board; hulls?: Hull
   const islands = uniformArray(Array.from({ length: MAX_ISLANDS }, () => new Vector4(0, 0, -1, -1)), 'vec4');
   const islandYaw = uniformArray(Array.from({ length: MAX_ISLANDS }, () => new Vector4(1, 0, 0, 0)), 'vec4');
   const sun = uniform(sunDir.clone().normalize());
-  const ripple = uniform(OCEAN.ripple);
+  const ripple = uniform(tune.get('sea.ripple'));
   const sea = uniform(SEA.state);
 
   const m = new MeshStandardNodeMaterial({ roughness: OCEAN.roughness, metalness: 0 });
 
   const base = positionGeometry.xz;
+  // One tiling noise texture replaces per-pixel procedural noise (see noise-texture.ts).
+  const noise = noiseTexture();
+  const tex = (uv: Node2) => texture(noise, uv);
 
   // Distance to the nearest shoreline: each island is an ellipse, its edge
   // warped by noise so the surf line isn't a perfect oval.
@@ -86,9 +91,8 @@ export function createOcean(sunDir: Vector3, opts: { board?: Board; hulls?: Hull
       const e = vec2(lx.div(isl.z), lz.div(isl.w)).length().sub(1).mul(isl.z.min(isl.w));
       d = mix(d, d.min(e), isl.z.greaterThan(0).select(float(1), float(0)));
     }
-    return d.add(mx_noise_float(vec3(p.mul(1.6), 3.1)).mul(0.22));
+    return d.add(tex(p.mul(0.045)).a.sub(0.5).mul(0.44));
   };
-  const shore = shoreAt(base);
 
   // Swash: every few seconds the water surges up the beach and drains back.
   const swashAt = (d: Node) => {
@@ -96,19 +100,23 @@ export function createOcean(sunDir: Vector3, opts: { board?: Board; hulls?: Hull
     return pow(surge, 2).mul(smoothstep(0.55, -0.15, d)).mul(0.075);
   };
 
-  // Vertex: displace, plus the swash running up the beaches.
+  // Vertex: displace, plus the swash running up the beaches. Shore distance and
+  // hull calming are smooth over a vertex spacing, so they're computed per
+  // vertex and interpolated rather than per pixel.
   const calmV: Node = hulls ? hulls.calm(base) : float(0);
-  m.positionNode = positionGeometry.add(gerstner(base, calmV, sea).disp).add(vec3(0, swashAt(shoreAt(base)), 0));
+  const shoreV = shoreAt(base);
+  m.positionNode = positionGeometry.add(gerstner(base, calmV, sea).disp).add(vec3(0, swashAt(shoreV), 0));
+  const calm = vertexStage(calmV) as unknown as Node;
+  const shore = vertexStage(shoreV) as unknown as Node;
 
-  // Fragment: analytic swell normal plus two scrolling octaves of ripple noise.
-  const calm: Node = hulls ? hulls.calm(base) : float(0);
+  // Fragment: analytic swell normal plus two scrolling layers of ripple from the noise texture.
   const g = gerstner(base, calm, sea);
-  const r1 = mx_noise_vec3(vec3(base.mul(2.6).add(vec2(time.mul(0.21), time.mul(0.13))), time.mul(0.25)));
-  const r2 = mx_noise_vec3(vec3(base.mul(7.5).sub(vec2(time.mul(0.33), time.mul(-0.18))), time.mul(0.4)));
+  const r1 = tex(base.mul(0.11).add(vec2(time.mul(0.009), time.mul(0.006)))).rg.sub(0.5).mul(2);
+  const r2 = tex(base.mul(0.29).sub(vec2(time.mul(0.013), time.mul(-0.008)))).gr.sub(0.5).mul(2);
   // Fade fine ripples with distance so they don't alias into a visible grid.
   const camDist = cameraPosition.sub(positionWorld).length();
   const near = smoothstep(55, 18, camDist);
-  const rip = r1.xz.mul(0.65).add(r2.xz.mul(near.mul(0.35))).mul(ripple).mul(float(1).sub(calm.mul(0.5)));
+  const rip = r1.mul(0.65).add(r2.mul(near.mul(0.35))).mul(ripple).mul(float(1).sub(calm.mul(0.5)));
   const n = normalize(g.normal.add(vec3(rip.x, 0, rip.y)));
   m.normalNode = transformNormalToView(n);
 
@@ -119,15 +127,15 @@ export function createOcean(sunDir: Vector3, opts: { board?: Board; hulls?: Hull
   const crest = smoothstep(-0.06, 0.08, g.height);
   // Large, slow colour variation (wind patches, depth changes) breaks up the
   // repeating interference pattern of the six swell trains.
-  const macro = mx_noise_float(vec3(base.mul(0.045), time.mul(0.015))).mul(0.5).add(0.5);
-  const patch = mx_noise_float(vec3(base.mul(0.13).add(7.3), time.mul(0.03))).mul(0.5).add(0.5);
+  const macro = tex(base.mul(0.011).add(time.mul(0.0006))).a;
+  const patch = tex(base.mul(0.03).add(vec2(0.37, time.mul(0.001)))).a;
   const crestMix = crest.mul(mix(float(0.25), float(0.6), patch)).add(macro.mul(0.3).add(0.1));
   let water = mix(deep, mid, crestMix);
-  const shallowAmt = smoothstep(0.9, 0.0, shore.add(mx_noise_float(vec3(base.mul(1.3), 0)).mul(0.35))).mul(0.8);
+  const shallowAmt = smoothstep(0.9, 0.0, shore.add(tex(base.mul(0.05).add(0.5)).b.sub(0.5).mul(0.7))).mul(0.8);
   water = mix(water, shallow, shallowAmt);
 
   // Shoreline foam: animated bands broken up by noise.
-  const foamNoise = mx_noise_float(vec3(base.mul(5.0), time.mul(0.3))).mul(0.5).add(0.5);
+  const foamNoise = tex(base.mul(0.2).add(vec2(time.mul(0.012), 0))).b;
   // Breakers roll in toward the shore (phase moves to smaller distances).
   const bands = sin(shore.mul(22).add(time.mul(2.4))).mul(0.5).add(0.5);
   const surge = sin(time.mul(0.85).sub(shore.mul(3.0))).mul(0.5).add(0.5);
@@ -165,6 +173,8 @@ export function createOcean(sunDir: Vector3, opts: { board?: Board; hulls?: Hull
   function update() {
     sea.value = SEA.state;
   }
+
+  tune.on('sea.ripple', (v) => (ripple.value = v as number));
 
   return { mesh, setIslands, update, uniforms: { sun, ripple, sea } };
 }

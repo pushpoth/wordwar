@@ -71,23 +71,45 @@
 
 /* Kill banner, top centre */
 .hud .toast {
-  left: 50%; top: 16px; transform: translate(-50%, -10px); opacity: 0; transition: opacity 0.25s, transform 0.25s;
+  left: 50%; top: 64px; transform: translate(-50%, -10px); opacity: 0; transition: opacity 0.25s, transform 0.25s;
   display: flex; gap: 14px; align-items: center; border-color: rgba(242, 179, 61, 0.6); padding: 12px 22px;
 }
 .hud .toast.show { opacity: 1; transform: translate(-50%, 0); }
 .hud .toast .value { color: var(--hud-amber); font-size: 22px; letter-spacing: 0.08em; }
 .hud .toast .sub { font-size: 14px; color: var(--hud-text); letter-spacing: 0.1em; }
 
-/* End card */
-.hud .end { left: 50%; top: 50%; transform: translate(-50%, -50%); width: 360px; text-align: center; padding: 26px; display: none; pointer-events: auto; }
-.hud .end.show { display: block; }
-.hud .end h2 { margin: 0 0 6px; font-size: 30px; letter-spacing: 0.12em; }
-.hud .end.win h2 { color: var(--hud-amber); }
-.hud .end.lose h2 { color: var(--hud-red); }
-.hud .end dl { display: grid; grid-template-columns: 1fr auto; gap: 6px 16px; margin: 16px 0; text-align: left; }
-.hud .end dt { color: var(--hud-dim); }
-.hud .end dd { margin: 0; font-weight: 600; }
-.hud .end .again { color: var(--hud-dim); font-size: 13px; letter-spacing: 0.08em; }
+/* Menu card: pause, mission end, and future screens */
+.hud .scrim { position: absolute; inset: 0; background: rgba(4, 12, 18, 0.35); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); opacity: 0; transition: opacity 0.2s; pointer-events: none; }
+.hud.menu-open .scrim { opacity: 1; pointer-events: auto; }
+.hud .menu { left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(380px, calc(100vw - 32px)); text-align: center; padding: 26px; display: none; pointer-events: auto; }
+.hud.menu-open .menu { display: block; }
+.hud .menu h2 { margin: 0 0 6px; font-size: 28px; letter-spacing: 0.12em; }
+.hud .menu.win h2 { color: var(--hud-amber); }
+.hud .menu.lose h2 { color: var(--hud-red); }
+.hud .menu dl { display: grid; grid-template-columns: 1fr auto; gap: 6px 16px; margin: 16px 0 4px; text-align: left; }
+.hud .menu dt { color: var(--hud-dim); }
+.hud .menu dd { margin: 0; font-weight: 600; }
+.hud .menu .actions { display: grid; gap: 8px; margin-top: 18px; }
+.hud .menu button {
+  font: 600 15px var(--hud-font); letter-spacing: 0.12em; text-transform: uppercase; color: var(--hud-text);
+  background: rgba(255, 255, 255, 0.06); border: 1px solid var(--hud-edge); border-radius: 8px; padding: 11px 14px;
+  display: flex; justify-content: space-between; align-items: center; cursor: pointer;
+}
+.hud .menu button:hover, .hud .menu button:focus-visible { border-color: var(--hud-amber); outline: none; }
+.hud .menu button.primary { background: rgba(242, 179, 61, 0.16); border-color: rgba(242, 179, 61, 0.7); color: var(--hud-amber); }
+.hud .menu kbd { font: 500 11px var(--hud-font); color: var(--hud-dim); letter-spacing: 0.08em; }
+
+/* Pause button, top centre */
+.hud .pause-btn {
+  position: absolute; left: 50%; top: 16px; transform: translateX(-50%); pointer-events: auto; cursor: pointer;
+  width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--hud-edge); background: var(--hud-bg);
+  color: var(--hud-text); font: 600 13px var(--hud-font); backdrop-filter: blur(6px);
+}
+.hud.menu-open .pause-btn { display: none; }
+
+/* Hidden until the loader finishes */
+.hud { opacity: 0; transition: opacity 0.4s; }
+.hud.ready { opacity: 1; }
 
 @media (max-width: 760px) {
   .hud .intel, .hud .log { display: none; }
