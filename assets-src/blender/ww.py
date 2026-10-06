@@ -205,6 +205,102 @@ def mirror_y(ob):
     return c
 
 
+def icosphere(name, r, subdiv=3, loc=(0, 0, 0), material=None, scale=(1, 1, 1)):
+    bm = bmesh.new()
+    bmesh.ops.create_icosphere(bm, subdivisions=subdiv, radius=r)
+    return _place(_obj_from_bmesh(name, bm, material), loc, (0, 0, 0), scale)
+
+
+def gable_roof(name, w, d, h, loc, material=None, overhang=0.02, rot_z=0.0):
+    """Triangular prism roof, ridge along local X."""
+    w2, d2 = w / 2 + overhang, d / 2 + overhang
+    bm = bmesh.new()
+    v = [bm.verts.new(p) for p in (
+        (-w2, -d2, 0), (w2, -d2, 0), (w2, d2, 0), (-w2, d2, 0), (-w2, 0, h), (w2, 0, h))]
+    for f in ((0, 1, 5, 4), (2, 3, 4, 5), (0, 4, 3), (1, 2, 5), (0, 3, 2, 1)):
+        bm.faces.new([v[i] for i in f])
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    return _place(_obj_from_bmesh(name, bm, material), loc, (0, 0, rot_z))
+
+
+def tapered_block(name, x0, x1, w, h, z0, material=None, taper=0.12, rake_front=0.0, rake_back=0.0,
+                  y=0.0, bevel=0.0):
+    """Block from x0 to x1 (aft to fore), width w, height h, sitting on z0.
+    Sides lean in by `taper` of the width; ends rake back by the given amount
+    at the top. Gives the angled, low-signature superstructure look."""
+    wt = w * (1 - taper)
+    bot = [(x0, y - w / 2, z0), (x1, y - w / 2, z0), (x1, y + w / 2, z0), (x0, y + w / 2, z0)]
+    top = [(x0 + rake_back, y - wt / 2, z0 + h), (x1 - rake_front, y - wt / 2, z0 + h),
+           (x1 - rake_front, y + wt / 2, z0 + h), (x0 + rake_back, y + wt / 2, z0 + h)]
+    bm = bmesh.new()
+    vb = [bm.verts.new(p) for p in bot]
+    vt = [bm.verts.new(p) for p in top]
+    bm.faces.new(list(reversed(vb)))
+    bm.faces.new(vt)
+    for i in range(4):
+        j = (i + 1) % 4
+        bm.faces.new((vb[i], vb[j], vt[j], vt[i]))
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    ob = _obj_from_bmesh(name, bm, material)
+    if bevel:
+        add_bevel(ob, bevel, 1)
+    return ob
+
+
+# ---------------------------------------------------------------------------
+# Sculpting: noise displacement, faceting, material by slope
+# ---------------------------------------------------------------------------
+
+
+def displace(ob, scale=0.5, strength=0.2, kind="CLOUDS", depth=2, offset=(0, 0, 0), direction="NORMAL"):
+    tex = bpy.data.textures.new(f"{ob.name}_tex", kind)
+    if kind == "CLOUDS":
+        tex.noise_scale = scale
+        tex.noise_depth = depth
+        tex.noise_basis = "BLENDER_ORIGINAL"
+    elif kind == "VORONOI":
+        tex.noise_scale = scale
+        tex.distance_metric = "DISTANCE"
+    empty = bpy.data.objects.new(f"{ob.name}_texspace", None)
+    empty.location = offset
+    bpy.context.scene.collection.objects.link(empty)
+    mod = ob.modifiers.new("Displace", "DISPLACE")
+    mod.texture = tex
+    mod.strength = strength
+    mod.mid_level = 0.5
+    mod.direction = direction
+    mod.texture_coords = "OBJECT"
+    mod.texture_coords_object = empty
+    return mod
+
+
+def decimate(ob, ratio=0.3):
+    mod = ob.modifiers.new("Decimate", "DECIMATE")
+    mod.decimate_type = "COLLAPSE"
+    mod.ratio = ratio
+    return mod
+
+
+def paint_by_slope(ob, top_material, min_dot=0.72, min_z=-1e9, side_material=None):
+    """Faces pointing up (normal·Z ≥ min_dot) above min_z get top_material."""
+    apply_all([ob])
+    me = ob.data
+    if top_material.name not in [m.name for m in me.materials if m]:
+        me.materials.append(top_material)
+    top_idx = [m.name for m in me.materials].index(top_material.name)
+    mw = ob.matrix_world
+    for p in me.polygons:
+        n = (mw.to_3x3() @ p.normal).normalized()
+        c = mw @ p.center
+        if n.z >= min_dot and c.z >= min_z:
+            p.material_index = top_idx
+
+
+def rng(seed):
+    import random
+    return random.Random(seed)
+
+
 # ---------------------------------------------------------------------------
 # Modifiers + finishing
 # ---------------------------------------------------------------------------
@@ -307,6 +403,7 @@ def build(objects, name, ao_distance=0.25):
 
 __all__ = [
     "reset", "out_path", "mat", "box", "cyl", "sphere", "torus", "lathe", "loft", "strut",
+    "icosphere", "gable_roof", "tapered_block", "displace", "decimate", "paint_by_slope", "rng",
     "array_copies", "mirror_y", "add_bevel", "apply_all", "join", "smooth_by_angle",
-    "bake_ao", "export", "build", "Matrix", "Vector", "math",
+    "bake_ao", "export", "build", "Matrix", "Vector", "math", "bpy", "bmesh",
 ]

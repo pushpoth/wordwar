@@ -4,6 +4,7 @@ import {
   positionGeometry, positionWorld, pow, sin, smoothstep, transformNormalToView, uniform,
   uniformArray, vec2, vec3,
 } from 'three/tsl';
+import type { Board } from './board';
 import { simTime as time } from './clock';
 
 type Node = TslNode<'float'>;
@@ -71,7 +72,7 @@ export function waveOffset(x: number, z: number, t: number, out: Vector3) {
   return out;
 }
 
-export function createOcean(sunDir: Vector3, extent = 140, segments = 360) {
+export function createOcean(sunDir: Vector3, board?: Board, extent = 140, segments = 360) {
   const geo = new PlaneGeometry(extent, extent, segments, segments);
   geo.rotateX(-Math.PI / 2);
 
@@ -107,23 +108,26 @@ export function createOcean(sunDir: Vector3, extent = 140, segments = 360) {
   const shallow = vec3(...color(OCEAN.shallow));
   const crest = smoothstep(-0.06, 0.08, g.height);
   let water = mix(deep, mid, crest.mul(0.55).add(0.25));
-  const shallowAmt = smoothstep(1.6, 0.0, shore).mul(0.85);
+  const shallowAmt = smoothstep(0.9, 0.0, shore.add(mx_noise_float(vec3(base.mul(1.3), 0)).mul(0.35))).mul(0.8);
   water = mix(water, shallow, shallowAmt);
 
   // Shoreline foam: animated bands broken up by noise.
   const foamNoise = mx_noise_float(vec3(base.mul(5.0), time.mul(0.3))).mul(0.5).add(0.5);
   const bands = sin(shore.mul(26).sub(time.mul(2.2))).mul(0.5).add(0.5);
   const edgeFoam = smoothstep(0.32, 0.0, shore).mul(foamNoise.mul(0.6).add(0.55));
-  const bandFoam = smoothstep(0.75, 0.15, shore).mul(pow(bands, 6)).mul(foamNoise).mul(0.8);
-  const crestFoam = smoothstep(0.075, 0.1, g.height).mul(smoothstep(0.7, 0.9, foamNoise)).mul(0.35);
+  const bandFoam = smoothstep(0.42, 0.1, shore).mul(pow(bands, 8)).mul(smoothstep(0.45, 0.8, foamNoise)).mul(0.7);
+  const crestFoam = smoothstep(0.09, 0.12, g.height).mul(smoothstep(0.8, 0.95, foamNoise)).mul(0.25);
   const foam = clamp(max(edgeFoam, max(bandFoam, crestFoam)), 0, 1);
-  m.colorNode = mix(water, vec3(...color(OCEAN.foam)), foam);
+  const surface = mix(water, vec3(...color(OCEAN.foam)), foam);
+  const ov = board?.overlay(base);
+  m.colorNode = ov ? mix(surface, ov.tintColor, ov.tint) : surface;
   m.roughnessNode = mix(float(OCEAN.roughness), float(0.65), foam);
 
   // Fake subsurface glow where waves face away from the sun toward the camera.
   const view = normalize(cameraPosition.sub(positionWorld));
   const back = pow(clamp(dot(view, sun.negate().mul(vec3(1, 0, 1)).normalize()), 0, 1), 3);
-  m.emissiveNode = shallow.mul(back.mul(crest).mul(0.12));
+  const glow = shallow.mul(back.mul(crest).mul(0.12));
+  m.emissiveNode = ov ? glow.add(ov.emissive) : glow;
 
   const mesh = new Mesh(geo, m);
   mesh.receiveShadow = true;

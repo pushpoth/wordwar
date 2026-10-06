@@ -15,7 +15,7 @@ export const LOOK = {
   sun: {
     // Low, warm and slightly behind the board so the water glints toward the camera.
     elevationDeg: 16,
-    azimuthDeg: 148,
+    azimuthDeg: 186,
     color: 0xffc58a,
     intensity: 3.2,
     shadowMapSize: 2048,
@@ -34,9 +34,9 @@ export const LOOK = {
   },
   exposure: 0.95,
   post: {
-    bloomStrength: 0.55,
+    bloomStrength: 0.45,
     bloomRadius: 0.45,
-    bloomThreshold: 0.82,
+    bloomThreshold: 0.9,
     // Tilt-shift depth of field: focus on the board, blur the near and far edges.
     dofFocalLength: 9,
     dofBokehScale: 3.2,

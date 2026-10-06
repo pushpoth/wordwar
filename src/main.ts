@@ -1,4 +1,5 @@
 import { Scene } from 'three/webgpu';
+import { createBoard } from './render/board';
 import { createCamera, fitFov } from './render/camera';
 import { pinnedTime, simTime, tickClock } from './render/clock';
 import { createOcean } from './render/ocean';
@@ -6,6 +7,7 @@ import { createPost } from './render/post';
 import { createRenderer } from './render/renderer';
 import { createSky } from './render/sky';
 import { buildDiorama } from './scene/diorama';
+import { LOOK } from './config/look';
 
 declare global {
   interface Window {
@@ -24,10 +26,11 @@ async function boot() {
   const { camera, target } = createCamera(window.innerWidth / window.innerHeight);
   const sky = createSky(scene, renderer);
 
-  const ocean = createOcean(sky.sun);
+  const board = createBoard(LOOK.board.size);
+  const ocean = createOcean(sky.sun, board);
   scene.add(ocean.mesh);
 
-  const diorama = await buildDiorama(scene);
+  const diorama = await buildDiorama(scene, board);
   ocean.setIslands(diorama.islands);
 
   const post = createPost(renderer, scene, camera, camera.position.distanceTo(target));
@@ -45,7 +48,7 @@ async function boot() {
 
   renderer.setAnimationLoop(() => {
     tickClock();
-    diorama.update(simTime.value);
+    diorama.update(simTime.value, camera);
     post.pipeline.render();
 
     state.frames++;

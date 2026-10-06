@@ -1,0 +1,100 @@
+import {
+  CanvasTexture, Group, Mesh, MeshBasicNodeMaterial, MeshStandardNodeMaterial, PlaneGeometry, SRGBColorSpace,
+  type Camera, type Vector3,
+} from 'three/webgpu';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { float, max, mix, sin, smoothstep, texture, uniform, uv, vec3, vec4 } from 'three/tsl';
+import { simTime as time } from './clock';
+
+const glyphCache = new Map<string, CanvasTexture>();
+
+/** White glyph on transparent, with a soft glow baked in for the bloom pass to catch. */
+function glyph(ch: string) {
+  let tex = glyphCache.get(ch);
+  if (tex) return tex;
+  const c = document.createElement('canvas');
+  c.width = c.height = 256;
+  const g = c.getContext('2d')!;
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  g.font = `900 ${ch === '_' ? 170 : 178}px "Arial Black", "Helvetica Neue", Arial, sans-serif`;
+  g.shadowColor = 'rgba(255,255,255,0.9)';
+  g.shadowBlur = 18;
+  g.fillStyle = '#fff';
+  g.fillText(ch, 128, ch === '_' ? 110 : 140);
+  g.shadowBlur = 0;
+  g.fillText(ch, 128, ch === '_' ? 110 : 140);
+  tex = new CanvasTexture(c);
+  tex.colorSpace = SRGBColorSpace;
+  tex.anisotropy = 4;
+  glyphCache.set(ch, tex);
+  return tex;
+}
+
+const TILE = 0.78;
+const slabGeo = new RoundedBoxGeometry(TILE, TILE, 0.16, 3, 0.07);
+const faceGeo = new PlaneGeometry(TILE * 0.86, TILE * 0.86);
+
+const slabMat = new MeshStandardNodeMaterial({ color: 0x1b2025, roughness: 0.35, metalness: 0.75 });
+// Amber rim: glows along the slab edges, brightest on the bevel.
+const rimUV = uv().sub(0.5).abs();
+slabMat.emissiveNode = vec3(1.0, 0.62, 0.12).mul(smoothstep(0.38, 0.5, max(rimUV.x, rimUV.y)).mul(1.4));
+
+/**
+ * The floating target word: one slab per letter above each of the ship's cells,
+ * every slab facing the camera. Unrevealed letters show a dim underscore.
+ */
+export function createWordSign(word: string) {
+  const group = new Group();
+  group.name = `word:${word}`;
+  const revealedU: ReturnType<typeof uniform>[] = [];
+  const tiles: Group[] = [];
+
+  [...word.toUpperCase()].forEach((ch, i) => {
+    const tile = new Group();
+    const slab = new Mesh(slabGeo, slabMat);
+    slab.castShadow = true;
+    tile.add(slab);
+
+    const rev = uniform(0);
+    revealedU.push(rev);
+    const letterTex = texture(glyph(ch));
+    const blankTex = texture(glyph('_'));
+    const face = new MeshBasicNodeMaterial({ transparent: true, depthWrite: false });
+    const a = mix(blankTex.a.mul(0.55), letterTex.a, rev);
+    const flicker = sin(time.mul(9).add(i * 1.7)).mul(0.04).add(1);
+    const hot = vec3(4.2, 3.6, 2.6).mul(flicker);
+    const dim = vec3(1.3, 0.75, 0.18);
+    face.colorNode = vec4(mix(dim, hot, rev), 1);
+    face.opacityNode = a.mul(float(1));
+    const faceMesh = new Mesh(faceGeo, face);
+    faceMesh.position.z = 0.082;
+    faceMesh.renderOrder = 4;
+    tile.add(faceMesh);
+
+    group.add(tile);
+    tiles.push(tile);
+  });
+
+  /** Place one letter above each ship cell, at `height` over the water. */
+  function place(cells: Vector3[], height = 1.15) {
+    tiles.forEach((t, i) => {
+      const c = cells[Math.min(i, cells.length - 1)];
+      t.position.set(c.x, height, c.z);
+      t.userData.baseY = height;
+    });
+  }
+
+  function setRevealed(mask: boolean[]) {
+    mask.forEach((r, i) => { if (revealedU[i]) revealedU[i].value = r ? 1 : 0; });
+  }
+
+  function update(camera: Camera, t: number) {
+    tiles.forEach((tile, i) => {
+      tile.quaternion.copy(camera.quaternion);
+      tile.position.y = tile.userData.baseY + Math.sin(t * 1.7 + i * 0.6) * 0.035;
+    });
+  }
+
+  return { group, place, setRevealed, update };
+}

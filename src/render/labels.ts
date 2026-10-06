@@ -1,0 +1,48 @@
+import { CanvasTexture, Group, Mesh, MeshBasicNodeMaterial, PlaneGeometry, SRGBColorSpace } from 'three/webgpu';
+import { texture, vec4 } from 'three/tsl';
+
+const COLUMNS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
+function labelTexture(text: string) {
+  const c = document.createElement('canvas');
+  c.width = c.height = 128;
+  const g = c.getContext('2d')!;
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  g.font = '800 84px "Helvetica Neue", Arial, sans-serif';
+  g.shadowColor = 'rgba(0,0,0,0.55)';
+  g.shadowBlur = 10;
+  g.shadowOffsetY = 4;
+  g.fillStyle = '#f3f7fa';
+  g.fillText(text, 64, 68);
+  const tex = new CanvasTexture(c);
+  tex.colorSpace = SRGBColorSpace;
+  return tex;
+}
+
+/**
+ * Column letters along the far edge and row numbers down the left edge,
+ * floating just above the water and tilted up toward the camera.
+ */
+export function createBoardLabels(size: number) {
+  const group = new Group();
+  group.name = 'board-labels';
+  const geo = new PlaneGeometry(0.62, 0.62);
+  const half = size / 2;
+  const add = (text: string, x: number, z: number) => {
+    const tex = texture(labelTexture(text));
+    const m = new MeshBasicNodeMaterial({ transparent: true, depthWrite: false });
+    m.colorNode = vec4(tex.rgb.mul(1.15), 1);
+    m.opacityNode = tex.a.mul(0.92);
+    const mesh = new Mesh(geo, m);
+    mesh.position.set(x, 0.22, z);
+    mesh.rotation.x = -Math.PI / 2 + 0.75;
+    mesh.renderOrder = 1;
+    group.add(mesh);
+  };
+  for (let i = 0; i < size; i++) {
+    add(COLUMNS[i], i - half + 0.5, -half - 0.55);
+    add(String(i + 1), -half - 0.6, i - half + 0.5);
+  }
+  return group;
+}
