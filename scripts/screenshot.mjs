@@ -101,6 +101,9 @@ try {
       await page.mouse.down();
       await page.mouse.move(x0 + dx, y0 + dy, { steps: 10 });
       await page.mouse.up();
+    } else if (key.startsWith('js:')) {
+      // Run a snippet in the page (no commas: keys are comma-separated).
+      await page.evaluate(key.slice(3));
     } else if (key.startsWith('tapxy:')) {
       // Tap the canvas at a pixel position (e.g. tapxy:520:340).
       const [x, y] = key.slice(6).split(':').map(Number);

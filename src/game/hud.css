@@ -60,20 +60,20 @@
 @media (prefers-reduced-motion: reduce) { .hud .sonar .sweep { animation: none; } }
 
 /* Word progress, length and keyboard, bottom right */
-.hud .word { right: 16px; bottom: 16px; width: 330px; }
-.hud .word .head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 2px 0 10px; }
-.hud .word .letters { font-size: 30px; font-weight: 700; letter-spacing: 0.32em; min-height: 38px; line-height: 38px; }
+.hud .word { right: 16px; bottom: 16px; width: 430px; }
+.hud .word .head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 2px 0 13px; }
+.hud .word .letters { font-size: 39px; font-weight: 700; letter-spacing: 0.32em; min-height: 50px; line-height: 50px; }
 .hud .word .letters b { font-weight: 700; }
 /* Radar hints: known letters that still need a torpedo. */
 .hud .word .letters em { font-style: normal; color: var(--hud-amber); opacity: 0.55; }
-.hud .word .len { white-space: nowrap; }
+.hud .word .len { white-space: nowrap; font-size: 16px; }
 .hud .keys { display: flex; justify-content: center; }
-.hud .kb { display: grid; gap: 4px; align-content: start; }
+.hud .kb { display: grid; gap: 5px; align-content: start; }
 .hud .kl { flex: 13; }
 .hud .kr { flex: 10; }
 .hud .kb .row { display: grid; }
 .hud .keys .key {
-  height: 28px; margin: 0 2px; font: 500 13px var(--hud-font); color: var(--hud-text); text-align: center; padding: 0;
+  height: 36px; margin: 0 2px; font: 500 17px var(--hud-font); color: var(--hud-text); text-align: center; padding: 0;
   border-radius: 4px; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.08);
   pointer-events: auto; cursor: pointer; touch-action: manipulation; user-select: none; -webkit-user-select: none;
   -webkit-tap-highlight-color: transparent;
@@ -166,6 +166,7 @@
   .hud .word { padding: 6px 8px; }
   .hud .word .head { margin: 0 0 4px; }
   .hud .word .letters { font-size: 20px; min-height: 24px; line-height: 24px; }
+  .hud .word .len { font-size: 12px; }
   .hud .keys .key { height: 38px; font-size: 16px; }
   /* The sonar dial, the log and its LOG button are hidden on phones for now. */
   .hud .sonar, .hud .log, .hud .aux-btn { display: none !important; }
@@ -194,5 +195,9 @@
   .hud .word { left: 0; right: 0; bottom: 0; width: auto; border-radius: 10px 10px 0 0; border-bottom: 0; padding: 8px 8px calc(var(--gb) + 2px); }
   .hud .keys .key { height: 44px; }
   .hud .mode { top: auto; bottom: calc(var(--dock) + 6px); width: 65vw; max-width: none; }
+  /* Kill banner: under the Menu button and camera card, top right. */
+  .hud .toast { top: calc(var(--gy) + 112px); left: auto; right: var(--gr); transform: translateY(-10px); max-width: calc(100vw - 2 * var(--gx) - 164px); box-sizing: border-box; padding: 6px 12px; text-align: right; }
+  .hud .toast .value { font-size: 15px; }
+  .hud .toast.show { transform: none; }
 }
 body.shot .hud { display: none; }

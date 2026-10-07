@@ -11,7 +11,9 @@ in the keyboard card), Menu button over a camera-and-sonar card at top right, mo
 (above the keyboard in portrait), fps readout dev-only beside the mission card, seed hidden. Landscape
 phones get a split keyboard (half the keys in each bottom corner, word progress in a pill at the bottom
 centre); phones hide the sonar, the log and its LOG button for now. Tapping a discovered ship aims at it
-(from radar mode too, via the new engine `aimAt`). The Word War logo heads the mission card and menus. Slice 2 added: save and
+(from radar mode too, via the new engine `aimAt`). The Word War logo heads the mission card and menus. Kill banners sit under the mode card (top right
+under Menu in portrait); desktop keys and word readout are 30% bigger. The tuner shows on a deployed
+build only with `?tune` in the URL. Slice 2 added: save and
 restore (seed plus action log in local storage, replayed on load), a pause
 menu (Space, the ❚❚ button, or leaving the tab) built on a reusable menu card,
 a loading progress bar, the dev tuner (`?tune`), a phone quality tier
