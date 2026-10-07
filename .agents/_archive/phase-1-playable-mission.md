@@ -1,3 +1,5 @@
+> **Archived 2026-10-07.** Closed after the user played full missions (win and lose) on a Mac and an iPhone: the game runs end to end at 60 fps. What is still true lives in status.md; touch still lacks a way back to radar.
+
 # Phase 1 · Playable mission
 
 ## Intent

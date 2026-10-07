@@ -29,11 +29,19 @@ explosion, depth of field, bloom, grade, SMAA). Run `npm run dev` (port 5190),
 (`--t` pins time; `--query` takes `view=close|ship`, `az=<deg>`, `el=<deg>`).
 In the browser, the arrow keys orbit and tilt the camera.
 
-Open for slice 3: pinch zoom and touch drag are unit-tested but untried on a real phone, as is
-the phone layout (checked only in headless Chromium at 844×390 and 390×844); a touch-only mission win
-wasn't automated. **Touch can't return to radar** (Esc is keyboard-only): needs a touch control. Tapping a ship switches target.
+Device review (2026-10-07, Mac and iPhone): both hold 60 fps. iPhone runs at 0.7× resolution (68 draws);
+Mac swings between 0.7× and 0.95× (87 draws). Default quality looks below par; lowering resolution and
+turning bloom off helped. Initial load is slow (see the loading note below). That feeds phase 2.
 
-Open from phase 0 (scheduled as phase 2, visual tuning):
+Loading: the slow part is on the device (shader compile, first frame), which headless runs can't time. Run any
+build with `?tune` to see "load Ns: gpu … models … world … shaders … 1st …" in the dev readout, then report it.
+Background tabs pause animation frames, and WebGL shader compile polls on them, so loading stalls until the
+tab is visible (the loader now says so); the game also pauses when the tab hides, by design.
+
+Touch and the phone layout were played end to end on an iPhone without reported problems. Still open: touch has no
+explicit way back to radar (Esc is keyboard-only; tapping a ship switches target).
+
+Open from phase 0 (scheduled as phase 2, visual and performance pass):
 - **Frame rate:** WebGPU holds about 56 fps on the dev machine (target 60);
   see `decisions.md`. Cut draw calls before adding more scenery.
 - **User review notes (2026-10-06)** are addressed, waiting on the next review:
@@ -70,25 +78,26 @@ Open from phase 0 (scheduled as phase 2, visual tuning):
 
 ## Active plan
 
-[Phase 1 · playable mission](plans/phase-1-playable-mission.md): the phase 0
-diorama becomes a playable 10×10 mission on the engine ported from Typemariner.
-Slices 1–3 are built; they wait on the user's play and device review. Phase 0's
-plan is archived; its open items are listed above.
+[Campaign build](plans/campaign-build.md): phases 4–6 as one plan, in slices —
+level catalog, progress and mission select first; then map sizes, difficulty
+and balance. Phase 1's plan is archived (the game plays end to end on a Mac and
+an iPhone at 60 fps).
 
 ## Roadmap
 
-Phase 1 is planned in detail. Refine each later phase against the current
-state of the repo when it starts.
+Refine each later phase against the current state of the repo when it starts.
 
 | Phase | Goal | Done when |
 |---|---|---|
 | 0 · Visual test scene ✅ | Prove the look; pick the renderer | Screenshots hold up next to the reference at 60 fps |
-| 1 · Playable mission | Engine port, a 10×10 mission playable by keyboard (slices 1–3 ✅ built) | A mission can be won or lost on desktop and phone; engine tests pass |
-| 2 · Visual tuning | Close the phase 0 open items (sun glare, ship and sub wakes and animation, weathering, wreck fire, art gaps against the reference) | Screenshots hold up next to the reference at 60 fps on the dev machine |
+| 1 · Playable mission ✅ | Engine port, full HUD, touch input | Missions won and lost on desktop and phone (done 2026-10-07) |
+| 2 · Visual and performance pass | Retune quality defaults (resolution, bloom, depth of field), then the phase 0 open items: sun glare, wakes and animation, weathering, wreck fire, art gaps against the reference; load time | Defaults look good on a Mac and an iPhone at 60 fps; screenshots hold up next to the reference |
 | 3 · Feel | Sonar-ping and torpedo-run effects, plus the remaining combat effects | Screenshots of every game event |
 | 4 · Map sizes | 8 / 10 / 12 / 15 / 18 grids; scenery and ship classes scale with size | Each size holds 60 fps |
 | 5 · Difficulty | Level ladder and modifiers, balanced by a simulation bot | Win rates match the target curve |
 | 6 · Progression | Mission select and saved progress | Progress survives a browser restart |
+
+Phases 4–6 are built together as the campaign plan; phases 2 and 3 wait until the campaign can be played end to end.
 
 ## Gotchas
 
