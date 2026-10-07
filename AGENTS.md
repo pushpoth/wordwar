@@ -30,10 +30,17 @@ with realistic, dramatic 3D graphics as the headline objective.
 - TypeScript strict, vanilla TS (no UI framework), Three.js, Vite, Vitest.
 - `src/engine/` is pure logic: no DOM, no Three.js, deterministic from a seed.
 - All randomness goes through the seeded RNG; all tuning numbers live in `src/config/`.
+- Tunable values are declared once in `src/config/tunables.ts` (`KNOBS`), with
+  a phone-tier default where it differs. Read them with `tune.get`, react with
+  `tune.on`. The user tunes in the browser with `?tune` (always on in `npm run
+  dev`) and pastes "Copy changes" output into chat; make those the new defaults
+  in `KNOBS`, not as one-off overrides elsewhere.
 - 3D assets are built from scratch by scripts in this repo (see `decisions.md`).
   Never hand-edit a generated `.glb`; change its script and rebuild.
 
 ## Finishing a session
+
+Push the work branch (never `main`) after each change so Vercel builds a preview.
 
 Update `status.md` if anything changed. Append to `field-log.md` when a
 command or tool misbehaved, or you worked around something. Append to

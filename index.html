@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Word War</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oxanium:wght@400;600;700&display=swap" />
+    <link rel="icon" href="/favicon.svg" />
+    <style>
+      html, body { margin: 0; height: 100%; background: #04121c; overflow: hidden; }
+      #stage { position: fixed; inset: 0; }
+      #stage canvas { display: block; touch-action: none; }
+      body { touch-action: manipulation; overscroll-behavior: none; }
+      /* Dev only (main.ts hides it unless the tuner is on): top right of the mission card; under it on phones. */
+      #hud-stats {
+        position: fixed; left: 208px; top: 16px; z-index: 4; text-align: left;
+        font: 11px/1.35 ui-monospace, SFMono-Regular, Menlo, monospace;
+        color: #cfe7f5; background: rgba(4, 18, 28, 0.6); padding: 5px 8px; border-radius: 6px;
+        pointer-events: none; white-space: pre;
+      }
+      body.shot #hud-stats { display: none; }
+      @media (max-width: 760px) and (orientation: portrait), (max-height: 520px) and (orientation: landscape) {
+        #hud-stats { left: max(8px, env(safe-area-inset-left)); top: calc(max(8px, env(safe-area-inset-top)) + 148px); font-size: 9px; padding: 4px 6px; }
+      }
+      #loader {
+        position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; background: radial-gradient(ellipse at 50% 40%, #0b2a3d 0%, #04121c 70%);
+        font-family: 'Oxanium', ui-sans-serif, system-ui, sans-serif; color: #dbe8ef; transition: opacity 0.6s ease;
+      }
+      #loader.done { opacity: 0; pointer-events: none; }
+      #loader .box { width: min(360px, calc(100vw - 48px)); text-align: center; }
+      #loader h1 { margin: 0 0 4px; font-size: 34px; letter-spacing: 0.32em; font-weight: 700; }
+      #loader h1 span { color: #f2b33d; }
+      #loader .tag { font-size: 12px; letter-spacing: 0.24em; color: #8ea6b4; margin-bottom: 26px; }
+      #loader .bar { height: 4px; border-radius: 2px; background: rgba(255,255,255,0.1); overflow: hidden; }
+      #loader .bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #f2b33d, #ffd27a); transition: width 0.25s ease; }
+      #loader .stage { margin-top: 12px; font-size: 12px; letter-spacing: 0.14em; color: #8ea6b4; text-transform: uppercase; }
+      #boot-error { position: fixed; inset: 0; display: grid; place-items: center; color: #ffb4a8; font: 15px system-ui; padding: 16px; text-align: center; }
+    </style>
+    <!-- Start the model downloads alongside the script, not after it has run. -->
+    <link rel="preload" as="fetch" href="/models/destroyer.glb" crossorigin />
+    <link rel="preload" as="fetch" href="/models/submarine.glb" crossorigin />
+    <link rel="preload" as="fetch" href="/models/island_lighthouse.glb" crossorigin />
+    <link rel="preload" as="fetch" href="/models/island_wooded.glb" crossorigin />
+    <link rel="preload" as="fetch" href="/models/island_rock.glb" crossorigin />
+    <link rel="preload" as="fetch" href="/models/buoy.glb" crossorigin />
+    <link rel="preload" as="fetch" href="/models/destroyer_wreck.glb" crossorigin />
+  </head>
+  <body>
+    <div id="loader"><div class="box">
+      <h1>WORD <span>WAR</span></h1>
+      <div class="tag">NAVAL WORD WARFARE</div>
+      <div class="bar"><i></i></div>
+      <div class="stage">Loading</div>
+    </div></div>
+    <div id="stage"></div>
+    <div id="hud-stats"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

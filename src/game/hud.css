@@ -1,0 +1,220 @@
+:root {
+  --hud-bg: rgba(8, 18, 26, 0.72);
+  --hud-edge: rgba(150, 190, 210, 0.22);
+  --hud-text: #dbe8ef;
+  --hud-dim: #8ea6b4;
+  --hud-amber: #f2b33d;
+  --hud-green: #5fe07a;
+  --hud-red: #ff6a4d;
+  --hud-font: 'Oxanium', 'Rajdhani', ui-sans-serif, system-ui, sans-serif;
+}
+
+.hud { position: fixed; inset: 0; pointer-events: none; z-index: 3; font-family: var(--hud-font); color: var(--hud-text); }
+.hud .panel {
+  position: absolute; background: var(--hud-bg); border: 1px solid var(--hud-edge); border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); padding: 12px 14px;
+}
+.hud .label { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--hud-dim); }
+.hud .value { font-size: 18px; font-weight: 600; letter-spacing: 0.06em; }
+
+/* Mission + resources, top left */
+.hud .status { left: 16px; top: 16px; width: 184px; display: grid; gap: 8px; }
+.hud .status .title .value { font-size: 17px; }
+.hud .meter { display: grid; gap: 5px; }
+.hud .meter .row { display: flex; justify-content: space-between; align-items: baseline; }
+.hud .bar { height: 6px; border-radius: 3px; background: rgba(255, 255, 255, 0.08); overflow: hidden; }
+.hud .bar > i { display: block; height: 100%; background: var(--hud-amber); border-radius: 3px; transition: width 0.25s ease; }
+.hud .bar.low > i { background: var(--hud-red); }
+
+/* Menu button over the camera and sonar card, top right */
+.hud .side { position: absolute; right: 16px; top: 16px; width: 168px; display: grid; gap: 8px; }
+.hud .menu-btn {
+  pointer-events: auto; cursor: pointer; height: 40px; border: 0; border-radius: 8px; background: var(--hud-amber); color: #1b1304;
+  font: 700 14px var(--hud-font); letter-spacing: 0.18em; text-transform: uppercase; touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.hud .menu-btn:hover, .hud .menu-btn:focus-visible { background: #ffc85c; outline: none; }
+.hud .side .panel { position: static; background: rgba(0, 0, 0, 0.6); display: grid; gap: 10px; pointer-events: auto; }
+.hud .cam { display: flex; gap: 6px; }
+.hud .cam button {
+  flex: 1; height: 40px; border-radius: 8px; border: 1px solid var(--hud-edge); background: rgba(255, 255, 255, 0.06);
+  color: var(--hud-text); font: 600 18px var(--hud-font); cursor: pointer; touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.hud .cam button:hover { border-color: var(--hud-amber); }
+.hud.menu-open .side { display: none; }
+
+/* Sonar dial, inside that card (hidden on landscape phones, and the card shrinks to fit) */
+.hud .sonar { display: grid; gap: 6px; justify-items: center; }
+.hud .sonar svg { width: 112px; height: 112px; }
+.hud .sonar .face { fill: #06150f; stroke: rgba(120, 210, 160, 0.4); stroke-width: 1.2; }
+.hud .sonar .ring { fill: none; stroke: rgba(120, 210, 160, 0.28); stroke-width: 0.8; }
+.hud .sonar .sweep { transform-origin: 0 0; animation: sonar-sweep 4s linear infinite; }
+.hud .sonar .sweep path { fill: rgba(120, 210, 160, 0.38); }
+.hud .sonar .ping { fill: none; stroke: var(--hud-green); stroke-width: 1.5; opacity: 0; transform-origin: 0 0; }
+.hud .sonar .ping.go { animation: sonar-ping 1.1s ease-out; }
+.hud .sonar .range { display: flex; justify-content: space-between; align-items: baseline; width: 100%; }
+@keyframes sonar-sweep { to { transform: rotate(360deg); } }
+@keyframes sonar-ping { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(13); } }
+@media (prefers-reduced-motion: reduce) { .hud .sonar .sweep { animation: none; } }
+
+/* Word progress, length and keyboard, bottom right */
+.hud .word { right: 16px; bottom: 16px; width: 430px; }
+.hud .word .head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 2px 0 13px; }
+.hud .word .letters { font-size: 39px; font-weight: 700; letter-spacing: 0.32em; min-height: 50px; line-height: 50px; }
+.hud .word .letters b { font-weight: 700; }
+/* Radar hints: known letters that still need a torpedo. */
+.hud .word .letters em { font-style: normal; color: var(--hud-amber); opacity: 0.55; }
+.hud .word .len { white-space: nowrap; font-size: 16px; }
+.hud .keys { display: flex; justify-content: center; }
+.hud .kb { display: grid; gap: 5px; align-content: start; }
+.hud .kl { flex: 13; }
+.hud .kr { flex: 10; }
+.hud .kb .row { display: grid; }
+.hud .keys .key {
+  height: 36px; margin: 0 2px; font: 500 17px var(--hud-font); color: var(--hud-text); text-align: center; padding: 0;
+  border-radius: 4px; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.08);
+  pointer-events: auto; cursor: pointer; touch-action: manipulation; user-select: none; -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.hud .keys .key:hover { border-color: rgba(255, 255, 255, 0.3); }
+.hud .keys .key.hit { background: rgba(95, 224, 122, 0.28); border-color: rgba(95, 224, 122, 0.6); }
+.hud .keys .key.miss { opacity: 0.32; }
+.hud .keys .key.pulse { animation: key-pulse 0.22s ease-out; }
+@keyframes key-pulse { 0% { background: rgba(242, 179, 61, 0.7); transform: scale(0.9); } 100% { transform: scale(1); } }
+.hud.menu-open .keys .key { pointer-events: none; }
+
+/* Logo: as on the loading screen */
+.hud .logo { font-size: 13px; font-weight: 700; letter-spacing: 0.32em; white-space: nowrap; }
+.hud .logo span { color: var(--hud-amber); }
+.hud .status .logo { margin-bottom: -2px; }
+.hud .menu .logo { font-size: 17px; margin-bottom: 12px; }
+
+/* Sonar log, bottom left */
+.hud .log { left: 16px; bottom: 16px; width: 300px; font-size: 13px; line-height: 1.55; }
+.hud .log div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--hud-dim); }
+.hud .log div:last-child { color: var(--hud-amber); }
+.hud .log time { color: rgba(142, 166, 180, 0.7); margin-right: 8px; }
+.hud .aux-btn { display: none; }
+
+/* Mode + hints, top centre */
+.hud .mode { left: 50%; top: 16px; transform: translateX(-50%); text-align: center; padding: 10px 18px; max-width: calc(100vw - 32px); }
+.hud .mode .value { font-size: 20px; letter-spacing: 0.2em; }
+.hud .mode.torpedo .value { color: var(--hud-amber); }
+.hud .mode.radar .value { color: var(--hud-green); }
+.hud .mode .hint { font-size: 12px; color: var(--hud-dim); margin-top: 3px; letter-spacing: 0.06em; }
+
+/* Kill banner, under the mode card */
+.hud .toast {
+  left: 50%; top: 92px; transform: translate(-50%, -10px); opacity: 0; transition: opacity 0.25s, transform 0.25s;
+  display: flex; gap: 14px; align-items: center; border-color: rgba(242, 179, 61, 0.6); padding: 12px 22px;
+}
+.hud .toast.show { opacity: 1; transform: translate(-50%, 0); }
+.hud .toast .value { color: var(--hud-amber); font-size: 22px; letter-spacing: 0.08em; }
+.hud .toast .sub { font-size: 14px; color: var(--hud-text); letter-spacing: 0.1em; }
+
+/* Menu card: pause, mission end, and future screens */
+.hud .scrim { position: absolute; inset: 0; background: rgba(4, 12, 18, 0.35); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); opacity: 0; transition: opacity 0.2s; pointer-events: none; }
+.hud.menu-open .scrim { opacity: 1; pointer-events: auto; }
+.hud .menu { left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(380px, calc(100vw - 32px)); text-align: center; padding: 26px; display: none; pointer-events: auto; }
+.hud.menu-open .menu { display: block; }
+.hud .menu h2 { margin: 0 0 6px; font-size: 28px; letter-spacing: 0.12em; }
+.hud .menu.win h2 { color: var(--hud-amber); }
+.hud .menu.lose h2 { color: var(--hud-red); }
+.hud .menu dl { display: grid; grid-template-columns: 1fr auto; gap: 6px 16px; margin: 16px 0 4px; text-align: left; }
+.hud .menu dt { color: var(--hud-dim); }
+.hud .menu dd { margin: 0; font-weight: 600; }
+.hud .menu .actions { display: grid; gap: 8px; margin-top: 18px; }
+.hud .menu button {
+  font: 600 15px var(--hud-font); letter-spacing: 0.12em; text-transform: uppercase; color: var(--hud-text);
+  background: rgba(255, 255, 255, 0.06); border: 1px solid var(--hud-edge); border-radius: 8px; padding: 11px 14px;
+  display: flex; justify-content: space-between; align-items: center; cursor: pointer;
+}
+.hud .menu button:hover, .hud .menu button:focus-visible { border-color: var(--hud-amber); outline: none; }
+.hud .menu button .l { display: grid; gap: 2px; text-align: left; }
+.hud .menu button small { font: 500 11px var(--hud-font); letter-spacing: 0.06em; text-transform: none; color: var(--hud-dim); }
+.hud .menu button .r { white-space: nowrap; letter-spacing: 0.1em; }
+.hud .menu button.locked { opacity: 0.4; cursor: default; }
+.hud .menu button:disabled:hover { border-color: var(--hud-edge); }
+.hud .menu.wide { width: min(560px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow-y: auto; }
+.hud .menu button.primary { background: rgba(242, 179, 61, 0.16); border-color: rgba(242, 179, 61, 0.7); color: var(--hud-amber); }
+.hud .menu kbd { font: 500 11px var(--hud-font); color: var(--hud-dim); letter-spacing: 0.08em; }
+
+/* Hidden until the loader finishes */
+.hud { opacity: 0; transition: opacity 0.4s; }
+.hud.ready { opacity: 1; }
+
+/* Touch screens: bigger targets wherever the layout stays the desktop one. */
+@media (pointer: coarse) {
+  .hud .word { width: 460px; }
+  .hud .keys .key { height: 44px; font-size: 16px; }
+  .hud .kb { gap: 6px; }
+  .hud .cam button, .hud .menu-btn { height: 44px; }
+}
+
+/* Phones, either way up */
+@media (max-width: 760px) and (orientation: portrait), (max-height: 520px) and (orientation: landscape) {
+  .hud { --gx: max(8px, env(safe-area-inset-left)); --gy: max(8px, env(safe-area-inset-top)); --gr: max(8px, env(safe-area-inset-right)); --gb: max(8px, env(safe-area-inset-bottom)); }
+  .hud .panel { padding: 8px 10px; border-radius: 8px; backdrop-filter: none; -webkit-backdrop-filter: none; background: rgba(8, 18, 26, 0.8); }
+  .hud .side .panel { background: rgba(0, 0, 0, 0.6); }
+  .hud .value { font-size: 15px; }
+  .hud .status { left: var(--gx); top: var(--gy); width: 134px; gap: 6px; }
+  .hud .status .brief { display: none; }
+  .hud .status .title .value { font-size: 14px; }
+  .hud .side { right: var(--gr); top: var(--gy); width: 156px; gap: 6px; }
+  .hud .menu-btn, .hud .cam button { height: 40px; }
+  .hud .mode { top: var(--gy); padding: 6px 14px; }
+  .hud .mode .value { font-size: 14px; }
+  .hud .mode .hint { font-size: 11px; margin-top: 1px; }
+  .hud .toast { top: 70px; padding: 8px 16px; }
+  .hud .toast .value { font-size: 17px; }
+  .hud .word { padding: 6px 8px; }
+  .hud .word .head { margin: 0 0 4px; }
+  .hud .word .letters { font-size: 20px; min-height: 24px; line-height: 24px; }
+  .hud .word .len { font-size: 12px; }
+  .hud .keys .key { height: 38px; font-size: 16px; }
+  /* The sonar dial, the log and its LOG button are hidden on phones for now. */
+  .hud .sonar, .hud .log, .hud .aux-btn { display: none !important; }
+}
+
+/* Landscape phone: a split keyboard (half the keys in each bottom corner) leaves the board centre stage. */
+@media (max-height: 520px) and (orientation: landscape) {
+  .hud { --u: clamp(30px, 5vw, 44px); }
+  .hud .word, .hud .keys { display: contents; }
+  .hud .kb {
+    position: absolute; bottom: var(--gb); padding: 6px 8px; pointer-events: auto; gap: 4px;
+    background: rgba(8, 18, 26, 0.8); border: 1px solid var(--hud-edge); border-radius: 8px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  }
+  .hud .kl { left: var(--gx); width: calc(6.5 * var(--u) + 16px); }
+  .hud .kr { right: var(--gr); width: calc(5 * var(--u) + 16px); }
+  .hud .word .head {
+    position: absolute; left: 50%; transform: translateX(-50%); bottom: var(--gb); margin: 0; padding: 4px 14px; gap: 14px;
+    background: rgba(8, 18, 26, 0.8); border: 1px solid var(--hud-edge); border-radius: 8px;
+  }
+  .hud.menu-open .kb, .hud.menu-open .word .head { display: none; }
+}
+
+/* Menus on a short screen: tighter, no logo. */
+@media (max-height: 520px) and (orientation: landscape) {
+  .hud .menu { padding: 12px 16px; }
+  .hud .menu .logo { display: none; }
+  .hud .menu h2 { font-size: 20px; margin-bottom: 2px; }
+  .hud .menu .actions { gap: 6px; margin-top: 10px; }
+  .hud .menu button { padding: 6px 12px; }
+  .hud .menu dl { margin: 8px 0 0; gap: 3px 16px; }
+}
+@media (max-width: 520px) { .hud .menu .actions { grid-template-columns: 1fr !important; } }
+
+/* Portrait phone: keyboard across the full width at the bottom edge, mode card on top of it. */
+@media (max-width: 760px) and (orientation: portrait) {
+  .hud .word { left: 0; right: 0; bottom: 0; width: auto; border-radius: 10px 10px 0 0; border-bottom: 0; padding: 8px 8px calc(var(--gb) + 2px); }
+  .hud .keys .key { height: 44px; }
+  .hud .mode { top: auto; bottom: calc(var(--dock) + 6px); width: 65vw; max-width: none; }
+  /* Kill banner: under the Menu button and camera card, top right. */
+  .hud .toast { top: calc(var(--gy) + 112px); left: auto; right: var(--gr); transform: translateY(-10px); max-width: calc(100vw - 2 * var(--gx) - 164px); box-sizing: border-box; padding: 6px 12px; text-align: right; }
+  .hud .toast .value { font-size: 15px; }
+  .hud .toast.show { transform: none; }
+}
+body.shot .hud { display: none; }
