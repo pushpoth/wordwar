@@ -52,6 +52,11 @@ export function createGame(config: MissionConfig, seed: number) {
       actions.push({ k: 'next', at: state.elapsedMs });
       state = switchTarget(state);
     },
+    /** Aim at a specific discovered ship (a tap on its intel row). */
+    selectTarget: (id: string) => {
+      actions.push({ k: 'select', id, at: state.elapsedMs });
+      state = switchTarget(state, id);
+    },
     toRadar: () => {
       actions.push({ k: 'radar-mode', at: state.elapsedMs });
       state = returnToRadar(state);
@@ -83,6 +88,7 @@ export function restoreGame(save: Save): Game {
     if (a.k === 'radar' && a.l) game.radar(a.l);
     else if (a.k === 'torpedo' && a.l) game.torpedo(a.l);
     else if (a.k === 'next') game.nextTarget();
+    else if (a.k === 'select' && a.id) game.selectTarget(a.id);
     else if (a.k === 'radar-mode') game.toRadar();
   }
   if (save.elapsedMs > game.state.elapsedMs) game.tick(save.elapsedMs - game.state.elapsedMs);

@@ -16,6 +16,7 @@ import type { MissionConfig } from '../engine/types';
 import { isPaused, setPaused } from '../render/clock';
 import { createGame, DEFAULT_MISSION, restoreGame, type Game } from './game';
 import { createHud } from './hud';
+import { installKeyboard, type Intents } from './input';
 import { clearSave, loadSave, writeSave } from './save';
 
 const PING_TO_REVEAL = 0.45;
@@ -334,40 +335,26 @@ export async function createController(scene: Scene, board: Board, hulls: Hulls)
 
   // ---- Input ---------------------------------------------------------------
 
-  window.addEventListener('keydown', (e) => {
-    if (e.metaKey || e.ctrlKey || e.altKey) return;
-    if ((e.target as HTMLElement | null)?.closest?.('.tp-dfwv, input, textarea')) return; // typing in the tuner
-    if (hud.isMenuOpen()) {
-      if (hud.menuKey(e.key)) e.preventDefault();
-      return;
-    }
-    if (ended) return;
-    if (e.key === ' ') {
-      e.preventDefault();
-      pause();
-      return;
-    }
-    if (e.key === 'Tab') {
-      e.preventDefault();
-      if (game.state.mode === 'TORPEDO') {
-        game.nextTarget();
-        syncBoard();
-        syncHud();
-        persist();
-      }
-      return;
-    }
-    if (e.key === 'Escape') {
+  const refresh = () => { syncBoard(); syncHud(); persist(); };
+  const intents: Intents = {
+    letter: (letter) => report(game.state.mode === 'TORPEDO' ? game.torpedo(letter) : game.radar(letter)),
+    nextTarget: () => {
+      if (game.state.mode !== 'TORPEDO') return;
+      game.nextTarget();
+      refresh();
+    },
+    selectTarget: (id) => {
+      if (ended || game.state.mode !== 'TORPEDO' || id === game.state.activeUnitId) return;
+      game.selectTarget(id);
+      refresh();
+    },
+    toRadar: () => {
       game.toRadar();
-      syncBoard();
-      syncHud();
-      persist();
-      return;
-    }
-    if (!/^[a-zA-Z]$/.test(e.key) || e.repeat) return;
-    const letter = e.key.toUpperCase();
-    report(game.state.mode === 'TORPEDO' ? game.torpedo(letter) : game.radar(letter));
-  });
+      refresh();
+    },
+    pause: () => pause(),
+  };
+  installKeyboard(intents, { menuKey: hud.menuKey, menuOpen: hud.isMenuOpen, ended: () => ended });
 
   // ---- Frame -----------------------------------------------------------------
 

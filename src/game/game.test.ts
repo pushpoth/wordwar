@@ -53,4 +53,19 @@ describe('game façade', () => {
     });
     expect(view(back)).toBe(view(game));
   });
+
+  it('restores a mission where the player picked a target by id', () => {
+    const game = createGame(DEFAULT_MISSION, 4242);
+    for (let i = 0; i < 40 && game.state.discoveredUnitsQueue.length < 2; i++) {
+      game.tick(game.state.config.batteryRegenSeconds * 1000);
+      game.radar('EASTRO'[i % 6]);
+    }
+    const queue = game.state.discoveredUnitsQueue;
+    expect(queue.length).toBeGreaterThan(1);
+    game.torpedo('Q'); // enters torpedo mode on the first ship
+    game.selectTarget(queue[1]);
+    expect(game.state.activeUnitId).toBe(queue[1]);
+    const back = restoreGame(JSON.parse(JSON.stringify(game.save())));
+    expect(back.state.activeUnitId).toBe(queue[1]);
+  });
 });

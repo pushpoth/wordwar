@@ -1,7 +1,7 @@
 import type { MissionConfig } from '../engine/types';
 
 /** One player action, stamped with the mission clock so replay matches battery regen. */
-export type Action = { k: 'radar' | 'torpedo' | 'next' | 'radar-mode'; l?: string; at: number };
+export type Action = { k: 'radar' | 'torpedo' | 'next' | 'select' | 'radar-mode'; l?: string; id?: string; at: number };
 
 export type Save = {
   v: 1;

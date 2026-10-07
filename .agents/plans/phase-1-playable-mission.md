@@ -39,7 +39,7 @@ touch is the on-screen keyboard plus target and camera controls.
 Tasks, in order; each is one session and ends with `npm test`, build, typecheck
 and a screenshot at desktop and phone size:
 
-1. **Input layer.** Pull key handling out of `controller.ts` into `src/game/input.ts`
+1. ✅ **Input layer.** Pull key handling out of `controller.ts` into `src/game/input.ts`
    with one intent API (`letter`, `nextTarget`, `selectTarget(id)`, `toRadar`,
    `pause`) that keyboard, on-screen keys and taps all call. Engine
    `switchTarget` already takes a unit id. Tested with stubs.
