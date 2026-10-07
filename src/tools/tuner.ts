@@ -5,10 +5,11 @@ const css = `
 .ww-tuner { position: fixed; top: 64px; right: 16px; width: 300px; max-height: calc(100vh - 80px); overflow-y: auto; z-index: 20; display: none; }
 .ww-tuner.open { display: block; }
 .ww-tuner-btn {
-  position: fixed; left: calc(50% + 30px); top: 16px; z-index: 20; width: 40px; height: 40px; border-radius: 50%;
+  position: fixed; right: 196px; top: 16px; z-index: 20; width: 40px; height: 40px; border-radius: 50%;
   border: 1px solid rgba(150,190,210,0.22); background: rgba(8,18,26,0.72); color: #dbe8ef; font-size: 18px; cursor: pointer;
 }
 .ww-tuner-btn.dirty::after { content: ''; position: absolute; right: 4px; top: 4px; width: 8px; height: 8px; border-radius: 50%; background: #f2b33d; }
+@media (max-width: 760px) and (orientation: portrait), (max-height: 520px) and (orientation: landscape) { .ww-tuner-btn { right: calc(max(8px, env(safe-area-inset-right)) + 164px); top: max(8px, env(safe-area-inset-top)); } }
 .ww-tuner .note { font: 11px ui-monospace, monospace; color: #8ea6b4; padding: 4px 8px 8px; }
 `;
 

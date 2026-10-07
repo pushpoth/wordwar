@@ -25,6 +25,7 @@ declare global {
 async function boot() {
   const stage = document.getElementById('stage')!;
   const statsEl = document.getElementById('hud-stats')!;
+  if (!TUNER_ENABLED) statsEl.style.display = 'none';
   const params = new URLSearchParams(location.search);
   if (params.has('shot')) document.body.classList.add('shot');
 

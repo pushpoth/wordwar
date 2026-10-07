@@ -40,6 +40,8 @@ with realistic, dramatic 3D graphics as the headline objective.
 
 ## Finishing a session
 
+Push the work branch (never `main`) after each change so Vercel builds a preview.
+
 Update `status.md` if anything changed. Append to `field-log.md` when a
 command or tool misbehaved, or you worked around something. Append to
 `decisions.md` for any judgment someone could have made differently. Advance

@@ -19,8 +19,7 @@
 .hud .value { font-size: 18px; font-weight: 600; letter-spacing: 0.06em; }
 
 /* Mission + resources, top left */
-.hud .status { left: 16px; top: 16px; width: 230px; display: grid; gap: 10px; }
-.hud .status .title { display: flex; justify-content: space-between; align-items: baseline; }
+.hud .status { left: 16px; top: 16px; width: 184px; display: grid; gap: 8px; }
 .hud .status .title .value { font-size: 17px; }
 .hud .meter { display: grid; gap: 5px; }
 .hud .meter .row { display: flex; justify-content: space-between; align-items: baseline; }
@@ -28,25 +27,46 @@
 .hud .bar > i { display: block; height: 100%; background: var(--hud-amber); border-radius: 3px; transition: width 0.25s ease; }
 .hud .bar.low > i { background: var(--hud-red); }
 
-/* Target intel, top right */
-.hud .intel { right: 16px; top: 16px; width: 250px; }
-.hud .intel ul { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 8px; }
-.hud .intel ul { pointer-events: auto; }
-.hud .intel li { cursor: pointer; min-height: 24px; display: grid; grid-template-columns: auto auto; justify-content: space-between; white-space: nowrap; align-items: center; gap: 8px; opacity: 0.92; }
-.hud .intel li.active { color: var(--hud-amber); }
-.hud .intel li.sunk { opacity: 0.45; text-decoration: line-through; }
-.hud .intel .boxes { display: flex; gap: 3px; }
-.hud .intel .boxes i { width: 14px; height: 14px; border: 1px solid rgba(220, 235, 245, 0.45); border-radius: 2px; }
-.hud .intel .boxes i.on { background: var(--hud-amber); border-color: var(--hud-amber); }
-.hud .intel .boxes i.hint { border-color: var(--hud-amber); box-shadow: inset 0 0 0 3px rgba(242, 179, 61, 0.35); }
-.hud .intel .empty { color: var(--hud-dim); font-size: 13px; margin-top: 6px; }
+/* Menu button over the camera and sonar card, top right */
+.hud .side { position: absolute; right: 16px; top: 16px; width: 168px; display: grid; gap: 8px; }
+.hud .menu-btn {
+  pointer-events: auto; cursor: pointer; height: 40px; border: 0; border-radius: 8px; background: var(--hud-amber); color: #1b1304;
+  font: 700 14px var(--hud-font); letter-spacing: 0.18em; text-transform: uppercase; touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.hud .menu-btn:hover, .hud .menu-btn:focus-visible { background: #ffc85c; outline: none; }
+.hud .side .panel { position: static; background: rgba(0, 0, 0, 0.6); display: grid; gap: 10px; pointer-events: auto; }
+.hud .cam { display: flex; gap: 6px; }
+.hud .cam button {
+  flex: 1; height: 40px; border-radius: 8px; border: 1px solid var(--hud-edge); background: rgba(255, 255, 255, 0.06);
+  color: var(--hud-text); font: 600 18px var(--hud-font); cursor: pointer; touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.hud .cam button:hover { border-color: var(--hud-amber); }
+.hud.menu-open .side { display: none; }
 
-/* Word progress + tried letters, bottom right */
-.hud .word { right: 16px; bottom: 112px; width: 330px; }
-.hud .word .letters { font-size: 30px; font-weight: 700; letter-spacing: 0.32em; margin: 6px 0 10px; min-height: 38px; }
+/* Sonar dial, inside that card (hidden on landscape phones, and the card shrinks to fit) */
+.hud .sonar { display: grid; gap: 6px; justify-items: center; }
+.hud .sonar svg { width: 112px; height: 112px; }
+.hud .sonar .face { fill: #06150f; stroke: rgba(120, 210, 160, 0.4); stroke-width: 1.2; }
+.hud .sonar .ring { fill: none; stroke: rgba(120, 210, 160, 0.28); stroke-width: 0.8; }
+.hud .sonar .sweep { transform-origin: 0 0; animation: sonar-sweep 4s linear infinite; }
+.hud .sonar .sweep path { fill: rgba(120, 210, 160, 0.38); }
+.hud .sonar .ping { fill: none; stroke: var(--hud-green); stroke-width: 1.5; opacity: 0; transform-origin: 0 0; }
+.hud .sonar .ping.go { animation: sonar-ping 1.1s ease-out; }
+.hud .sonar .range { display: flex; justify-content: space-between; align-items: baseline; width: 100%; }
+@keyframes sonar-sweep { to { transform: rotate(360deg); } }
+@keyframes sonar-ping { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(13); } }
+@media (prefers-reduced-motion: reduce) { .hud .sonar .sweep { animation: none; } }
+
+/* Word progress, length and keyboard, bottom right */
+.hud .word { right: 16px; bottom: 16px; width: 330px; }
+.hud .word .head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 2px 0 10px; }
+.hud .word .letters { font-size: 30px; font-weight: 700; letter-spacing: 0.32em; min-height: 38px; line-height: 38px; }
 .hud .word .letters b { font-weight: 700; }
 /* Radar hints: known letters that still need a torpedo. */
 .hud .word .letters em { font-style: normal; color: var(--hud-amber); opacity: 0.55; }
+.hud .word .len { white-space: nowrap; }
 .hud .keys { display: grid; gap: 4px; }
 .hud .keys div { display: flex; justify-content: center; gap: 4px; }
 .hud .keys .key {
@@ -61,37 +81,25 @@
 .hud .keys .key.pulse { animation: key-pulse 0.22s ease-out; }
 @keyframes key-pulse { 0% { background: rgba(242, 179, 61, 0.7); transform: scale(0.9); } 100% { transform: scale(1); } }
 .hud.menu-open .keys .key { pointer-events: none; }
-
-/* Sonar dial, left, above the log */
-.hud .sonar { left: 16px; bottom: 196px; width: 150px; padding: 10px 12px; display: grid; gap: 6px; justify-items: center; }
-.hud .sonar svg { width: 112px; height: 112px; }
-.hud .sonar .face { fill: #06150f; stroke: rgba(120, 210, 160, 0.4); stroke-width: 1.2; }
-.hud .sonar .ring { fill: none; stroke: rgba(120, 210, 160, 0.28); stroke-width: 0.8; }
-.hud .sonar .sweep { transform-origin: 0 0; animation: sonar-sweep 4s linear infinite; }
-.hud .sonar .sweep path { fill: rgba(120, 210, 160, 0.38); }
-.hud .sonar .ping { fill: none; stroke: var(--hud-green); stroke-width: 1.5; opacity: 0; transform-origin: 0 0; }
-.hud .sonar .ping.go { animation: sonar-ping 1.1s ease-out; }
-.hud .sonar .range { display: flex; justify-content: space-between; align-items: baseline; width: 100%; }
-@keyframes sonar-sweep { to { transform: rotate(360deg); } }
-@keyframes sonar-ping { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(13); } }
-@media (prefers-reduced-motion: reduce) { .hud .sonar .sweep { animation: none; } }
+.hud .kb-side { display: none; }
 
 /* Sonar log, bottom left */
 .hud .log { left: 16px; bottom: 16px; width: 300px; font-size: 13px; line-height: 1.55; }
 .hud .log div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--hud-dim); }
 .hud .log div:last-child { color: var(--hud-amber); }
 .hud .log time { color: rgba(142, 166, 180, 0.7); margin-right: 8px; }
+.hud .aux-btn { display: none; }
 
-/* Mode + hints, bottom centre */
-.hud .mode { left: 50%; bottom: 16px; transform: translateX(-50%); text-align: center; padding: 10px 18px; }
+/* Mode + hints, top centre */
+.hud .mode { left: 50%; top: 16px; transform: translateX(-50%); text-align: center; padding: 10px 18px; max-width: calc(100vw - 32px); }
 .hud .mode .value { font-size: 20px; letter-spacing: 0.2em; }
 .hud .mode.torpedo .value { color: var(--hud-amber); }
 .hud .mode.radar .value { color: var(--hud-green); }
 .hud .mode .hint { font-size: 12px; color: var(--hud-dim); margin-top: 3px; letter-spacing: 0.06em; }
 
-/* Kill banner, top centre */
+/* Kill banner, under the mode card */
 .hud .toast {
-  left: 50%; top: 64px; transform: translate(-50%, -10px); opacity: 0; transition: opacity 0.25s, transform 0.25s;
+  left: 50%; top: 92px; transform: translate(-50%, -10px); opacity: 0; transition: opacity 0.25s, transform 0.25s;
   display: flex; gap: 14px; align-items: center; border-color: rgba(242, 179, 61, 0.6); padding: 12px 22px;
 }
 .hud .toast.show { opacity: 1; transform: translate(-50%, 0); }
@@ -119,18 +127,6 @@
 .hud .menu button.primary { background: rgba(242, 179, 61, 0.16); border-color: rgba(242, 179, 61, 0.7); color: var(--hud-amber); }
 .hud .menu kbd { font: 500 11px var(--hud-font); color: var(--hud-dim); letter-spacing: 0.08em; }
 
-/* Camera and menu buttons, bottom right */
-.hud .cam { right: 16px; bottom: 16px; display: flex; gap: 18px; align-items: flex-end; padding: 10px 16px; pointer-events: auto; }
-.hud .cam .group { display: grid; gap: 6px; justify-items: center; }
-.hud .cam .pair { display: flex; gap: 6px; }
-.hud .cam button {
-  width: 40px; height: 40px; border-radius: 8px; border: 1px solid var(--hud-edge); background: rgba(255, 255, 255, 0.06);
-  color: var(--hud-text); font: 600 18px var(--hud-font); cursor: pointer; touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
-}
-.hud .cam button:hover { border-color: var(--hud-amber); }
-.hud.menu-open .cam { display: none; }
-
 /* Hidden until the loader finishes */
 .hud { opacity: 0; transition: opacity 0.4s; }
 .hud.ready { opacity: 1; }
@@ -140,71 +136,62 @@
   .hud .word { width: 460px; }
   .hud .keys .key { flex: 0 0 40px; height: 44px; font-size: 16px; padding: 0; }
   .hud .keys { gap: 6px; }
-  .hud .cam button { width: 44px; height: 44px; }
-  .hud .intel li { min-height: 44px; }
+  .hud .cam button, .hud .menu-btn { height: 44px; }
 }
 
-/* Phones, either way up: a docked keyboard, folded intel, the log behind LOG, no sonar dial. */
-.hud .aux-btn { display: none; }
-@media (max-width: 760px), (max-height: 520px) {
+/* Phones, either way up */
+@media (max-width: 760px) and (orientation: portrait), (max-height: 520px) and (orientation: landscape) {
   .hud { --gx: max(8px, env(safe-area-inset-left)); --gy: max(8px, env(safe-area-inset-top)); --gr: max(8px, env(safe-area-inset-right)); --gb: max(8px, env(safe-area-inset-bottom)); }
   .hud .panel { padding: 8px 10px; border-radius: 8px; backdrop-filter: none; -webkit-backdrop-filter: none; background: rgba(8, 18, 26, 0.8); }
+  .hud .side .panel { background: rgba(0, 0, 0, 0.6); }
   .hud .value { font-size: 15px; }
-
-  /* Mission and meters: one slim block, top left. */
-  .hud .status { left: var(--gx); top: var(--gy); width: 168px; gap: 6px; }
-  .hud .status > .label { display: none; }
+  .hud .status { left: var(--gx); top: var(--gy); width: 134px; gap: 6px; }
+  .hud .status .brief { display: none; }
   .hud .status .title .value { font-size: 14px; }
-
-  /* Mode as a small pill, top centre. */
-  .hud .mode { top: var(--gy); bottom: auto; padding: 5px 14px; }
+  .hud .side { right: var(--gr); top: var(--gy); width: 156px; gap: 6px; }
+  .hud .menu-btn, .hud .cam button { height: 40px; }
+  .hud .mode { top: var(--gy); padding: 6px 14px; }
   .hud .mode .value { font-size: 14px; }
-  .hud .mode .hint { display: none; }
-  .hud .toast { top: 52px; padding: 8px 16px; }
+  .hud .mode .hint { font-size: 11px; margin-top: 1px; }
+  .hud .toast { top: 70px; padding: 8px 16px; }
   .hud .toast .value { font-size: 17px; }
-
-  /* Intel: the active ship, unfolding to every ship. */
-  .hud .intel { right: var(--gr); top: var(--gy); width: 200px; padding: 6px 10px; pointer-events: auto; }
-  .hud .intel .label { cursor: pointer; min-height: 20px; }
-  .hud .intel .label::after { content: ' ▾'; }
-  .hud .intel.open .label::after { content: ' ▴'; }
-  .hud .intel li { display: none; min-height: 44px; }
-  .hud .intel li.active, .hud .intel.open li { display: grid; }
-  .hud .intel .empty { margin-top: 2px; }
-
-  /* Keyboard docked at the bottom centre, clear of the camera buttons. */
-  .hud .word { left: 50%; right: auto; transform: translateX(-50%); bottom: var(--gb); width: min(460px, calc(100vw - 2 * var(--gx) - 2 * 220px)); padding: 6px 8px; }
-  .hud .word .label { display: none; }
-  .hud .word .letters { font-size: 20px; margin: 0 0 4px; min-height: 24px; line-height: 24px; text-align: center; }
+  .hud .word { padding: 6px 8px; }
+  .hud .word .head { margin: 0 0 4px; }
+  .hud .word .letters { font-size: 20px; min-height: 24px; line-height: 24px; }
   .hud .keys { gap: 4px; }
   .hud .keys div { gap: 4px; }
-  .hud .keys .key { flex: 1 1 0; max-width: 46px; height: 38px; font-size: 16px; padding: 0; }
-
-  /* Camera buttons in a column, bottom right. */
-  .hud .cam { right: var(--gr); bottom: var(--gb); flex-direction: column; gap: 6px; padding: 6px; align-items: center; }
-  .hud .cam .label { display: none; }
-  .hud .cam .pair { flex-direction: column; }
-  .hud .cam .group { gap: 0; }
-
-  /* Sonar and log appear with the LOG button. */
-  .hud .sonar, .hud .log { display: none; }
+  .hud .keys .key { flex: 1 1 0; max-width: 52px; height: 38px; font-size: 16px; padding: 0; }
+  .hud .log { left: var(--gx); width: 200px; font-size: 12px; line-height: 1.4; padding: 6px 10px; display: none; }
   .hud.show-aux .log { display: block; }
-  .hud .log { left: var(--gx); bottom: calc(var(--gb) + 94px); width: 200px; font-size: 12px; line-height: 1.4; padding: 6px 10px; }
   .hud .aux-btn {
-    display: block; position: absolute; left: var(--gx); bottom: calc(var(--gb) + 52px); pointer-events: auto; height: 36px; padding: 0 14px;
+    display: block; position: absolute; left: var(--gx); pointer-events: auto; height: 36px; padding: 0 14px;
     border-radius: 8px; border: 1px solid var(--hud-edge); background: rgba(8, 18, 26, 0.8); color: var(--hud-dim);
     font: 600 12px var(--hud-font); letter-spacing: 0.14em; cursor: pointer;
   }
   .hud.menu-open .aux-btn { display: none; }
 }
+
+/* Landscape phone: no sonar, no log; the keyboard takes 60% of the width and can sit in either bottom corner. */
+@media (max-height: 520px) and (orientation: landscape) {
+  .hud .sonar, .hud .log, .hud .aux-btn { display: none !important; }
+  .hud .word { right: var(--gr); bottom: var(--gb); width: 60vw; }
+  .hud.kb-left .word { right: auto; left: var(--gx); }
+  .hud .kb-side {
+    display: block; position: absolute; bottom: 0; width: 30px; height: 36px; padding: 0; pointer-events: auto; cursor: pointer;
+    border-radius: 8px; border: 1px solid var(--hud-edge); background: rgba(8, 18, 26, 0.8); color: var(--hud-dim); font-size: 13px;
+  }
+  .hud .kb-side.to-left { left: -36px; }
+  .hud .kb-side.to-right { right: -36px; display: none; }
+  .hud.kb-left .kb-side.to-left { display: none; }
+  .hud.kb-left .kb-side.to-right { display: block; }
+}
+
+/* Portrait phone: keyboard across the full width at the bottom edge, mode card on top of it. */
 @media (max-width: 760px) and (orientation: portrait) {
-  .hud .status { width: 150px; }
-  .hud .intel { width: 170px; }
-  .hud .mode { left: var(--gx); transform: none; top: 128px; }
-  .hud .word { width: calc(100vw - 2 * var(--gx)); }
+  .hud .word { left: 0; right: 0; bottom: 0; width: auto; border-radius: 10px 10px 0 0; border-bottom: 0; padding: 8px 8px calc(var(--gb) + 2px); }
   .hud .keys .key { max-width: none; height: 44px; }
-  .hud .cam { bottom: calc(var(--dock) + 4px); }
-  .hud .aux-btn { bottom: calc(var(--dock) + 4px); }
-  .hud .log { bottom: calc(var(--dock) + 48px); }
+  .hud .mode { top: auto; bottom: calc(var(--dock) + 6px); }
+  .hud .aux-btn { bottom: calc(var(--dock) + 98px); }
+  .hud .log { bottom: calc(var(--dock) + 140px); }
 }
 body.shot .hud { display: none; }

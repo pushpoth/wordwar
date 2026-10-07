@@ -102,3 +102,11 @@ Append-only. Close an entry by changing its status; never delete one.
   the free area above it. Drag orbits continuously; the 90° snap from Typemariner isn't ported.
 - **Why:** The native keyboard would cover the board and resize the viewport mid-battle;
   a docked keyboard plus a framed board keeps every tile visible while typing.
+
+## 2026-10-07 · Intel card dropped; word progress and length live in the keyboard card
+- **Status:** active
+- **Decision:** The target intel list is gone. The keyboard card shows the target's letters on the left
+  and "N letters" on the right. The sonar range reads a fixed "400m" (decorative). The fps readout is
+  dev-only. On landscape phones the keyboard is 60vw and can be moved to either bottom corner.
+- **Why:** The user's review: found ships already show their words on the map, and the list cost screen space.
+  Consequence: touch has no way yet to switch target or return to radar.

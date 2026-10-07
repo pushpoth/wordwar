@@ -1,5 +1,5 @@
 import { Group, type Camera, type Scene } from 'three/webgpu';
-import { BATTERY_MAX, RADAR_REVEALS_BY_GRID } from '../config/balance';
+import { BATTERY_MAX } from '../config/balance';
 import type { EngineEvent, MissionState, Unit } from '../engine/types';
 import { loadModel, preloadModels } from '../render/assets';
 import { CELL, type Board } from '../render/board';
@@ -95,7 +95,6 @@ export async function createController(scene: Scene, board: Board, hulls: Hulls,
     game?.dispose();
     game = restored ?? createGame(missionConfig(), seed);
     seed = game.seed;
-    hud.setRange(RADAR_REVEALS_BY_GRID[game.state.config.gridSize] ?? 0);
     fleet.clear();
     board.clear();
     discovered = [];
@@ -203,16 +202,6 @@ export async function createController(scene: Scene, board: Board, hulls: Hulls,
       mode: st.mode,
       target: target ? [...target.word].map((ch, i) => ({ ch, state: letterState(st, target, i) })) : null,
       tried,
-      intel: discovered.map((id) => {
-        const u = game.unit(id)!;
-        return {
-          id,
-          length: u.length,
-          revealed: u.coords.map((_, i) => letterState(st, u, i)),
-          sunk: u.destroyed,
-          active: id === st.activeUnitId,
-        };
-      }),
     });
   }
 
@@ -361,7 +350,6 @@ export async function createController(scene: Scene, board: Board, hulls: Hulls,
     pause: () => pause(),
   };
   installKeyboard(intents, { menuKey: hud.menuKey, menuOpen: hud.isMenuOpen, ended: () => ended, onLetter: hud.flash });
-  hud.onSelect((id) => { if (!hud.isMenuOpen()) intents.selectTarget(id); });
   hud.onLetter((letter) => {
     if (!ended && !hud.isMenuOpen()) intents.letter(letter);
   });
