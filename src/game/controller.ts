@@ -6,7 +6,7 @@ import { CELL, type Board } from '../render/board';
 import type { HullFootprint, Hulls } from '../render/hulls';
 import { createBoardLabels } from '../render/labels';
 import type { IslandShore } from '../render/ocean';
-import type { CameraControls } from '../render/camera';
+import { viewInset, type CameraControls } from '../render/camera';
 import { createWordSign } from '../render/word-sign';
 import { footprint, ride, type Floater } from '../scene/buoyancy';
 import { SUB } from '../scene/diorama';
@@ -327,6 +327,7 @@ export async function createController(scene: Scene, board: Board, hulls: Hulls,
     setPaused(false);
   }
 
+  hud.watchDock((px) => { viewInset.bottom = px; view.refit(); });
   hud.onPause(() => pause());
   hud.onCamera({ zoomIn: view.zoomIn, zoomOut: view.zoomOut, rotate: () => view.rotate(1) });
   // Leaving the tab or app pauses the game; progress is already saved.

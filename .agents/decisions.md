@@ -93,3 +93,12 @@ Append-only. Close an entry by changing its status; never delete one.
   phase 3 (Feel). Phases 3–6 keep their numbers so existing references hold.
 - **Why:** The roadmap table had drifted from the plan actually being worked, and the
   user wants gameplay finished before visual polish.
+
+## 2026-10-07 · Phones use our own keys, docked, with the camera framing the board above them
+- **Status:** active
+- **Decision:** Touch play uses the HUD's on-screen keyboard (fires on pointer-down), never
+  the phone's native keyboard. On screens under 760 px wide or 520 px tall the keyboard
+  docks at the bottom and `viewInset` shifts and widens the camera so the board sits in
+  the free area above it. Drag orbits continuously; the 90° snap from Typemariner isn't ported.
+- **Why:** The native keyboard would cover the board and resize the viewport mid-battle;
+  a docked dock plus a framed board keeps every tile visible while typing.

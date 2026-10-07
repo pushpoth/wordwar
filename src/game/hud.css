@@ -135,10 +135,80 @@
 .hud { opacity: 0; transition: opacity 0.4s; }
 .hud.ready { opacity: 1; }
 
-@media (max-width: 760px) {
-  .hud .intel, .hud .log, .hud .sonar { display: none; }
-  .hud .word { left: 16px; right: 16px; width: auto; bottom: 92px; }
-  .hud .cam { right: 16px; bottom: 16px; }
-  .hud .status { width: 180px; }
+/* Touch screens: bigger targets wherever the layout stays the desktop one. */
+@media (pointer: coarse) {
+  .hud .word { width: 460px; }
+  .hud .keys .key { flex: 0 0 40px; height: 44px; font-size: 16px; padding: 0; }
+  .hud .keys { gap: 6px; }
+  .hud .cam button { width: 44px; height: 44px; }
+  .hud .intel li { min-height: 44px; }
+}
+
+/* Phones, either way up: a docked keyboard, folded intel, sonar and log behind LOG. */
+.hud .aux-btn { display: none; }
+@media (max-width: 760px), (max-height: 520px) {
+  .hud { --gx: max(8px, env(safe-area-inset-left)); --gy: max(8px, env(safe-area-inset-top)); --gr: max(8px, env(safe-area-inset-right)); --gb: max(8px, env(safe-area-inset-bottom)); }
+  .hud .panel { padding: 8px 10px; border-radius: 8px; backdrop-filter: none; -webkit-backdrop-filter: none; background: rgba(8, 18, 26, 0.8); }
+  .hud .value { font-size: 15px; }
+
+  /* Mission and meters: one slim block, top left. */
+  .hud .status { left: var(--gx); top: var(--gy); width: 168px; gap: 6px; }
+  .hud .status > .label { display: none; }
+  .hud .status .title .value { font-size: 14px; }
+
+  /* Mode as a small pill, top centre. */
+  .hud .mode { top: var(--gy); bottom: auto; padding: 5px 14px; }
+  .hud .mode .value { font-size: 14px; }
+  .hud .mode .hint { display: none; }
+  .hud .toast { top: 52px; padding: 8px 16px; }
+  .hud .toast .value { font-size: 17px; }
+
+  /* Intel: the active ship, unfolding to every ship. */
+  .hud .intel { right: var(--gr); top: var(--gy); width: 200px; padding: 6px 10px; pointer-events: auto; }
+  .hud .intel .label { cursor: pointer; min-height: 20px; }
+  .hud .intel .label::after { content: ' ▾'; }
+  .hud .intel.open .label::after { content: ' ▴'; }
+  .hud .intel li { display: none; min-height: 44px; }
+  .hud .intel li.active, .hud .intel.open li { display: grid; }
+  .hud .intel .empty { margin-top: 2px; }
+
+  /* Keyboard docked at the bottom centre, clear of the camera buttons. */
+  .hud .word { left: 50%; right: auto; transform: translateX(-50%); bottom: var(--gb); width: min(460px, calc(100vw - 2 * var(--gx) - 2 * 220px)); padding: 6px 8px; }
+  .hud .word .label { display: none; }
+  .hud .word .letters { font-size: 20px; margin: 0 0 4px; min-height: 24px; line-height: 24px; text-align: center; }
+  .hud .keys { gap: 4px; }
+  .hud .keys div { gap: 4px; }
+  .hud .keys .key { flex: 1 1 0; max-width: 46px; height: 38px; font-size: 16px; padding: 0; }
+
+  /* Camera buttons in a column, bottom right. */
+  .hud .cam { right: var(--gr); bottom: var(--gb); flex-direction: column; gap: 6px; padding: 6px; align-items: center; }
+  .hud .cam .label { display: none; }
+  .hud .cam .pair { flex-direction: column; }
+  .hud .cam .group { gap: 0; }
+
+  /* Sonar and log appear with the LOG button. */
+  .hud .sonar, .hud .log { display: none; }
+  .hud.show-aux .sonar, .hud.show-aux .log { display: grid; }
+  .hud.show-aux .log { display: block; }
+  .hud .sonar { left: var(--gx); bottom: calc(var(--gb) + 94px); }
+  .hud .log { left: var(--gx); bottom: calc(var(--gb) + 94px); width: 230px; font-size: 12px; line-height: 1.4; padding: 6px 10px; }
+  .hud.show-aux .sonar { bottom: calc(var(--gb) + 94px + 6.4em + 20px); }
+  .hud .aux-btn {
+    display: block; position: absolute; left: var(--gx); bottom: calc(var(--gb) + 52px); pointer-events: auto; height: 36px; padding: 0 14px;
+    border-radius: 8px; border: 1px solid var(--hud-edge); background: rgba(8, 18, 26, 0.8); color: var(--hud-dim);
+    font: 600 12px var(--hud-font); letter-spacing: 0.14em; cursor: pointer;
+  }
+  .hud.menu-open .aux-btn { display: none; }
+}
+@media (max-width: 760px) and (orientation: portrait) {
+  .hud .status { width: 150px; }
+  .hud .intel { width: 170px; }
+  .hud .mode { left: var(--gx); transform: none; top: 128px; }
+  .hud .word { width: calc(100vw - 2 * var(--gx)); }
+  .hud .keys .key { max-width: none; height: 44px; }
+  .hud .cam { bottom: calc(var(--dock) + 4px); }
+  .hud .aux-btn { bottom: calc(var(--dock) + 4px); }
+  .hud .log { bottom: calc(var(--dock) + 48px); }
+  .hud.show-aux .sonar { bottom: calc(var(--dock) + 48px + 6.4em + 20px); }
 }
 body.shot .hud { display: none; }

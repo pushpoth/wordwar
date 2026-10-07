@@ -60,16 +60,22 @@ export function createHud() {
   const toast = el('div', 'panel toast', '<div><div class="value"></div><div class="sub"></div></div>');
   const menuEl = el('div', 'panel menu');
   const scrim = el('div', 'scrim');
+  const auxBtn = el('button', 'aux-btn', 'LOG');
+  auxBtn.type = 'button';
+  auxBtn.setAttribute('aria-label', 'Show or hide the sonar and log');
+  auxBtn.addEventListener('click', () => root.classList.toggle('show-aux'));
   const cam = el('div', 'panel cam', `
     <div class="group"><span class="label">Zoom</span>
       <span class="pair"><button type="button" data-act="zoom-out" aria-label="Zoom out">−</button><button type="button" data-act="zoom-in" aria-label="Zoom in">+</button></span></div>
     <div class="group"><span class="label">Rotate</span><button type="button" data-act="rotate" aria-label="Rotate the board">⟳</button></div>
     <div class="group"><span class="label">Menu</span><button type="button" data-act="menu" aria-label="Pause menu">❚❚</button></div>`);
   const camBtn = (act: string) => cam.querySelector<HTMLButtonElement>(`[data-act="${act}"]`)!;
-  root.append(status, intel, word, sonar, log, mode, toast, scrim, menuEl, cam);
+  root.append(status, intel, word, sonar, log, mode, toast, scrim, menuEl, cam, auxBtn);
   document.body.appendChild(root);
 
   let selectFn: (id: string) => void = () => {};
+  // On small screens the intel list folds to the active ship; its header unfolds it.
+  intel.querySelector('.label')!.addEventListener('click', () => intel.classList.toggle('open'));
   intel.querySelector('ul')!.addEventListener('click', (e) => {
     const id = (e.target as HTMLElement).closest<HTMLElement>('li[data-id]')?.dataset.id;
     if (id) selectFn(id);
@@ -191,6 +197,24 @@ export function createHud() {
   }
 
   /** A tap on a ship's row in the intel list. */
+  /**
+   * On phones the keyboard is docked at the bottom: report its height (0 on
+   * desktop) so the camera can frame the board above it, and expose it to CSS
+   * as --dock so the other controls can sit on top of it.
+   */
+  function watchDock(fn: (px: number) => void) {
+    const compact = window.matchMedia('(max-width: 760px), (max-height: 520px)');
+    const measure = () => {
+      const px = compact.matches ? Math.ceil(window.innerHeight - word.getBoundingClientRect().top) + 4 : 0;
+      document.documentElement.style.setProperty('--dock', `${px}px`);
+      fn(px);
+    };
+    new ResizeObserver(measure).observe(word);
+    compact.addEventListener('change', measure);
+    window.addEventListener('resize', measure);
+    measure();
+  }
+
   /** A radar ping went out: pulse the dial. */
   function ping() {
     const p = sonar.querySelector('.ping')!;
@@ -228,7 +252,7 @@ export function createHud() {
     root.classList.add('ready');
   }
 
-  return { render, note, banner, menu, menuKey, onPause, onCamera, onLetter, onSelect, ping, setRange, flash, ready, isMenuOpen: () => menuActions.length > 0 };
+  return { render, note, banner, menu, menuKey, onPause, onCamera, onLetter, onSelect, ping, setRange, watchDock, flash, ready, isMenuOpen: () => menuActions.length > 0 };
 }
 
 export type Hud = ReturnType<typeof createHud>;

@@ -2,7 +2,11 @@
 
 ## Where things stand
 
-Phase 1 slices 1 and 2 are on `phase-1-gameplay`. Slice 2 added: save and
+Phase 1 slices 1 and 2 are on `phase-1-gameplay`; slice 3 (full HUD and touch)
+is built bar your device check. Slice 3 added: one input layer (`src/game/input.ts`), a
+tappable on-screen keyboard, zoom/rotate/menu buttons (`[ ] + -` keys too),
+drag-orbit and pinch gestures (`gestures.ts`), tap-to-select on intel rows, a sonar
+dial, and a phone layout (docked keyboard, folded intel, LOG toggle). Slice 2 added: save and
 restore (seed plus action log in local storage, replayed on load), a pause
 menu (Space, the ❚❚ button, or leaving the tab) built on a reusable menu card,
 a loading progress bar, the dev tuner (`?tune`), a phone quality tier
@@ -57,7 +61,7 @@ Open from phase 0 (scheduled as phase 2, visual tuning):
 
 [Phase 1 · playable mission](plans/phase-1-playable-mission.md): the phase 0
 diorama becomes a playable 10×10 mission on the engine ported from Typemariner.
-Slices 1 and 2 are built; slice 3 (full HUD, touch input) is next. Phase 0's
+Slices 1–3 are built; they wait on the user's play and device review. Phase 0's
 plan is archived; its open items are listed above.
 
 ## Roadmap
@@ -68,7 +72,7 @@ state of the repo when it starts.
 | Phase | Goal | Done when |
 |---|---|---|
 | 0 · Visual test scene ✅ | Prove the look; pick the renderer | Screenshots hold up next to the reference at 60 fps |
-| 1 · Playable mission | Engine port, a 10×10 mission playable by keyboard (slices 1–2 ✅), then the full HUD and touch input (slice 3) | A mission can be won or lost on desktop and phone; engine tests pass |
+| 1 · Playable mission | Engine port, a 10×10 mission playable by keyboard (slices 1–3 ✅ built) | A mission can be won or lost on desktop and phone; engine tests pass |
 | 2 · Visual tuning | Close the phase 0 open items (sun glare, ship and sub wakes and animation, weathering, wreck fire, art gaps against the reference) | Screenshots hold up next to the reference at 60 fps on the dev machine |
 | 3 · Feel | Sonar-ping and torpedo-run effects, plus the remaining combat effects | Screenshots of every game event |
 | 4 · Map sizes | 8 / 10 / 12 / 15 / 18 grids; scenery and ship classes scale with size | Each size holds 60 fps |

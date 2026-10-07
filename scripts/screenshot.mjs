@@ -5,6 +5,7 @@
 //   npm run screenshot -- --query "view=close" --frames 90
 //   npm run screenshot -- --url https://<preview>.vercel.app
 //   npm run screenshot -- --hud --no-pin --keys "E,T,A,Tab" --key-frames 12   (play, then shoot)
+//   --touch --w 844 --h 390   (emulate a phone: coarse pointer, mobile viewport)
 //   …--keys "drag:200:0"   (orbit by dragging the canvas)
 //   …--keys "tap:E,tap:A"   (tap on-screen keys; text of any HUD button)
 //   …--keys "E,A,Reload"   ("Reload" reloads the page, keeping its storage)
@@ -66,7 +67,7 @@ const browser = await puppeteer.launch({
   ],
   executablePath: customExe || (await chromium.executablePath()),
   headless: 'shell',
-  defaultViewport: { width, height, deviceScaleFactor: 1 },
+  defaultViewport: { width, height, deviceScaleFactor: 1, ...(args.touch ? { hasTouch: true, isMobile: true } : {}) },
 });
 
 let code = 0;

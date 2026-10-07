@@ -60,12 +60,12 @@ and a screenshot at desktop and phone size:
 5. ✅ **Sonar dial.** A decorative SVG dial with a rotating sweep (port
    `ui/sonar-log.ts`' `SonarPanel`), pulsing on a radar ping. Range readout
    shows the radar's reveal count for this grid (`RADAR_REVEALS_BY_GRID`), not a slider.
-6. **Phone layout.** Today the intel panel and log are hidden under 760 px. Design
+6. ✅ **Phone layout.** Today the intel panel and log are hidden under 760 px. Design
    a landscape-first phone layout: keyboard docked at the bottom, intel as a
    collapsible strip, sonar and log folded behind a toggle; respect safe-area
    insets; 44 px minimum touch targets; no page scroll or pinch-zoom of the
-   page (`viewport` meta). Portrait: show a "rotate your device" hint only if
-   the board can't be framed.
+   page (`viewport` meta). Portrait needed no "rotate your device" hint: the
+   board frames above the docked keyboard (`viewInset` in `render/camera.ts`).
 7. **Review pass.** Screenshots of every HUD state at 1536×1024 and a phone
    size; check on a real phone; amend the plan with what the user reports.
 

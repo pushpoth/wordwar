@@ -54,6 +54,8 @@ export function createCamera(aspect: number) {
   let baseDistance = distance;
   const clampDist = (d: number) => MathUtils.clamp(d, baseDistance * ZOOM_MIN, baseDistance * ZOOM_MAX);
   const controls = {
+    /** Re-fit the view (after the HUD's docked area changes size). */
+    refit: () => fitFov(camera, camera.aspect),
     /** Turn the board by a quarter turn (negative: the other way). */
     rotate: (dir: 1 | -1 = 1) => { goal.az = (goal.az ?? orbit.az) + dir * ROTATE_STEP_DEG; },
     /** Zoom in (factor < 1) or out (> 1); successive presses compound. */
@@ -148,10 +150,23 @@ export function createCamera(aspect: number) {
 
 export type CameraControls = ReturnType<typeof createCamera>['controls'];
 
-/** Keep the board in frame on narrow screens by widening the vertical FOV. */
+/** Screen pixels at the bottom taken by a docked HUD (the phone keyboard); the board is framed above them. */
+export const viewInset = { bottom: 0 };
+
+/**
+ * Keep the board in frame on narrow screens by widening the vertical FOV. A
+ * bottom inset shrinks the free area: the view widens to fit it and shifts up.
+ */
 export function fitFov(camera: PerspectiveCamera, aspect: number) {
   const base = new URLSearchParams(location.search).has('view') ? LOOK.camera.fov : tune.get('camera.fov');
+  const h = window.innerHeight;
+  // The board never fills the screen's height, so widen by less than the full inset.
+  const free = MathUtils.clamp((h - viewInset.bottom) / h, 0.4, 1) ** 0.7;
   camera.aspect = aspect;
   camera.fov = aspect >= 1.4 ? base : base * Math.min(1.9, 1.4 / aspect);
+  // Widen so the same scene fits the shorter free area.
+  camera.fov = MathUtils.radToDeg(2 * Math.atan(Math.tan(MathUtils.degToRad(camera.fov / 2)) / free));
+  if (viewInset.bottom > 0) camera.setViewOffset(window.innerWidth, h, 0, viewInset.bottom / 2, window.innerWidth, h);
+  else camera.clearViewOffset();
   camera.updateProjectionMatrix();
 }
