@@ -23,6 +23,18 @@ const ROTATE_STEP_DEG = 90;
  * up/down tilt it; motion eases in and out. `?az=<deg>` and `?el=<deg>` set
  * the starting angle for review shots.
  */
+/**
+ * Where a cinematic shot wants the camera. Any field left out stays as it is.
+ * `rate` is how quickly the camera closes on the pose, per second (about 1.5 is
+ * languid, 6 is a tight follow); `snap` jumps straight there.
+ */
+export type Pose = { target?: { x: number; y?: number; z: number }; az?: number; el?: number; dist?: number; rate?: number; snap?: boolean };
+
+/** A shot: asked for the pose at `t` seconds in, returns null when it is over. */
+export type Shot = (t: number) => Pose | null;
+
+const wrap180 = (deg: number) => ((((deg + 180) % 360) + 360) % 360) - 180;
+
 export function createCamera(aspect: number) {
   const params = new URLSearchParams(location.search);
   const view = VIEWS[params.get('view') ?? ''];
@@ -36,6 +48,8 @@ export function createCamera(aspect: number) {
       };
   const camera = new PerspectiveCamera(c.fov, aspect, 0.5, 400);
   const target = new Vector3(...c.targetOffset);
+  /** Where the camera looks when nothing is in focus: the board's middle. */
+  const center = target.clone();
   let distance = c.distance;
   // Low angles reveal the horizon and the empty sea beyond the scenery; keep above it.
   const minTilt = () => tune.get('camera.minTilt');
@@ -47,10 +61,16 @@ export function createCamera(aspect: number) {
     vAz: 0,
     vEl: 0,
   };
+  // The default framing, which cinematics settle back to.
+  let homeAz = orbit.az;
+  let homeEl = orbit.el;
+  /** A point (a revealed ship) the camera pans to and orbits around; null for the board's middle. */
+  let focus: { x: number; z: number } | null = null;
+  let script: { fn: Shot; t: number; restore: { az: number; el: number; dist: number } } | null = null;
   const held = new Set<string>();
   const keys = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'];
   /** Where a button press or a gesture is easing the camera to; null when it isn't. */
-  const goal: { az: number | null; dist: number | null } = { az: null, dist: null };
+  const goal: { az: number | null; el: number | null; dist: number | null; rate: number } = { az: null, el: null, dist: null, rate: 6 };
   // The framing is tuned for a 10×10 board; other sizes scale the distance (and the look-at point) to match.
   let sizeScale = 1;
   let baseDistance = distance;
@@ -64,21 +84,40 @@ export function createCamera(aspect: number) {
     setBoardSize: (n: number, instant = false) => {
       sizeScale = n <= 10 ? n / 10 : 1 + (n / 10 - 1) * 0.93;
       baseDistance = tune.get<number>('camera.distance') * sizeScale;
-      target.set(0, tune.get<number>('camera.targetY'), tune.get<number>('camera.targetZ') * sizeScale);
+      center.set(0, tune.get<number>('camera.targetY'), tune.get<number>('camera.targetZ') * sizeScale);
+      focus = null;
+      target.copy(center);
       if (instant) { distance = baseDistance; goal.dist = null; place(); }
-      else goal.dist = baseDistance;
+      else { goal.rate = 3; goal.dist = baseDistance; place(); }
     },
+    /** Pan to a point (and orbit around it from now on), or back to the board's middle with null. */
+    focusOn: (p: { x: number; z: number } | null) => { focus = p ? { x: p.x, z: p.z } : null; },
+    /**
+     * Play a shot: the camera eases along the poses it returns, then settles
+     * back to `restore` (the framing before the shot unless given). Any camera
+     * control from the player ends the shot early, softly.
+     */
+    play: (shot: Shot, restore?: { az: number; el: number; dist: number }) => {
+      script = { fn: shot, t: 0, restore: restore ?? { az: orbit.az, el: orbit.el, dist: distance } };
+      goal.az = goal.el = goal.dist = null;
+      orbit.vAz = orbit.vEl = 0;
+    },
+    /** The default framing for this board, for shots that end there. */
+    home: () => ({ az: homeAz, el: homeEl, dist: baseDistance }),
+    get playing() { return script !== null; },
     /** Re-fit the view (after the HUD's docked area changes size). */
     refit: () => fitFov(camera, camera.aspect),
     /** Turn the board by a quarter turn (negative: the other way). */
-    rotate: (dir: 1 | -1 = 1) => { goal.az = (goal.az ?? orbit.az) + dir * ROTATE_STEP_DEG; },
+    rotate: (dir: 1 | -1 = 1) => { endShot(); goal.rate = 6; goal.az = (goal.az ?? orbit.az) + dir * ROTATE_STEP_DEG; },
     /** Zoom in (factor < 1) or out (> 1); successive presses compound. */
-    zoom: (factor: number) => { goal.dist = clampDist((goal.dist ?? distance) * factor); },
+    zoom: (factor: number) => { endShot(); goal.rate = 6; goal.dist = clampDist((goal.dist ?? distance) * factor); },
     zoomIn: () => controls.zoom(ZOOM_STEP),
     zoomOut: () => controls.zoom(1 / ZOOM_STEP),
     /** A drag or pinch: move straight there, no easing. */
     nudge: (dAz: number, dEl: number, zoomFactor = 1) => {
+      if (endShot()) return; // the first touch just hands control back
       goal.az = null;
+      goal.el = null;
       goal.dist = null;
       orbit.vAz = orbit.vEl = 0;
       orbit.az = (orbit.az + dAz) % 360;
@@ -95,12 +134,25 @@ export function createCamera(aspect: number) {
       else if (e.key === '-') controls.zoomOut();
     }
     if (!keys.includes(e.key)) return;
+    endShot();
     held.add(e.key);
     goal.az = null;
     e.preventDefault();
   });
   window.addEventListener('keyup', (e) => held.delete(e.key));
   window.addEventListener('blur', () => held.clear());
+
+  /** End a running shot and ease back to where it will settle. Returns whether there was one. */
+  function endShot(): boolean {
+    if (!script) return false;
+    const { restore } = script;
+    script = null;
+    goal.rate = 2.5;
+    goal.az = orbit.az + wrap180(restore.az - orbit.az);
+    goal.el = restore.el;
+    goal.dist = restore.dist;
+    return true;
+  }
 
   function place() {
     const el = MathUtils.degToRad(orbit.el);
@@ -118,11 +170,12 @@ export function createCamera(aspect: number) {
     tune.onAny(['camera.distance', 'camera.targetY', 'camera.targetZ'], () => {
       distance = baseDistance = tune.get<number>('camera.distance') * sizeScale;
       goal.dist = null;
-      target.set(0, tune.get('camera.targetY'), tune.get<number>('camera.targetZ') * sizeScale);
+      center.set(0, tune.get('camera.targetY'), tune.get<number>('camera.targetZ') * sizeScale);
+      if (!focus && !script) target.copy(center);
       place();
     });
-    tune.on('camera.elevation', (v) => { orbit.el = v as number; place(); });
-    tune.on('camera.azimuth', (v) => { orbit.az = v as number; place(); });
+    tune.on('camera.elevation', (v) => { orbit.el = homeEl = v as number; place(); });
+    tune.on('camera.azimuth', (v) => { orbit.az = homeAz = v as number; place(); });
     tune.on('camera.fov', () => fitFov(camera, camera.aspect));
   }
 
@@ -138,7 +191,39 @@ export function createCamera(aspect: number) {
       orbit.el = MathUtils.clamp(orbit.el + orbit.vEl * dt, minTilt(), MAX_TILT);
       moved = true;
     }
-    const goalEase = 1 - Math.exp(-dt * 6);
+    // A shot, or else the pan toward whatever is in focus.
+    let steered = false; // the shot is steering the look-at point
+    if (script) {
+      script.t += dt;
+      const p = script.fn(script.t);
+      if (!p) endShot();
+      else {
+        const k = p.snap ? 1 : 1 - Math.exp(-dt * (p.rate ?? 4));
+        steered = !!p.target;
+        if (p.target) target.lerp(new Vector3(p.target.x, p.target.y ?? center.y, p.target.z), k);
+        if (p.az !== undefined) orbit.az += wrap180(p.az - orbit.az) * k;
+        if (p.el !== undefined) orbit.el += (p.el - orbit.el) * k;
+        if (p.dist !== undefined) distance += (p.dist - distance) * k;
+        orbit.el = MathUtils.clamp(orbit.el, 18, MAX_TILT);
+        moved = true;
+      }
+    }
+    if (!steered) {
+      const want = focus ? { x: focus.x, y: center.y, z: focus.z } : center;
+      const k = 1 - Math.exp(-dt * 3);
+      if (Math.abs(want.x - target.x) + Math.abs(want.z - target.z) > 0.002) {
+        target.x += (want.x - target.x) * k;
+        target.y += (want.y - target.y) * k;
+        target.z += (want.z - target.z) * k;
+        moved = true;
+      }
+    }
+    const goalEase = 1 - Math.exp(-dt * goal.rate);
+    if (goal.el !== null) {
+      orbit.el += (goal.el - orbit.el) * goalEase;
+      if (Math.abs(goal.el - orbit.el) < 0.05) { orbit.el = goal.el; goal.el = null; }
+      moved = true;
+    }
     if (goal.az !== null) {
       orbit.az += (goal.az - orbit.az) * goalEase;
       if (Math.abs(goal.az - orbit.az) < 0.05) { orbit.az = goal.az % 360; goal.az = null; }

@@ -144,3 +144,14 @@ Append-only. Close an entry by changing its status; never delete one.
 - **Why:** The user's play: two ships on a big board are hard to find, and very short words take many torpedoes to guess,
   so a bigger board should come with more ships, not fewer. The bot doesn't model the cost of finding ships by radar
   (it only waits out the battery), so its budgets say nothing about that: the user's notes decide.
+
+## 2026-10-08 · Camera shots as scripted poses that the camera eases toward
+- **Status:** active
+- **Decision:** A shot is a function from seconds-in to a target pose (look-at point, heading, tilt, distance, plus a
+  per-pose closing rate), played by `view.play`; the camera closes on each pose exponentially, so every move starts and
+  ends softly, and a shot ends by easing back to the framing it began from (the board's default for the opening shot).
+  Between shots the camera pans to the targeted ship and orbits it. The killing torpedo is delayed 1.1 s and runs
+  1.8 s (instead of 0.6 s) so the shot can swing in and follow it; the end card waits for the shot. A player's camera
+  input ends a shot at once. Shots are off with `?cine=0`, the tuner knob, or reduced motion.
+- **Why:** The user asked for transitions between game states. Poses-by-function keep the shots testable without a
+  renderer and leave room for more (target reveal, mission end) without new camera code.

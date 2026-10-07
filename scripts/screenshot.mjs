@@ -7,6 +7,7 @@
 //   npm run screenshot -- --hud --no-pin --keys "E,T,A,Tab" --key-frames 12   (play, then shoot)
 //   --touch --w 844 --h 390   (emulate a phone: coarse pointer, mobile viewport)
 //   …--keys "drag:200:0"   (orbit by dragging the canvas)
+//   --cine                    (let the camera shots play; off by default in these shots)
 //   …--keys "tapxy:520:340"   (tap the canvas at a pixel, e.g. a ship)
 //   …--keys "tap:E,tap:A"   (tap on-screen keys; text of any HUD button)
 //   …--keys "E,A,Reload"   ("Reload" reloads the page, keeping its storage)
@@ -58,6 +59,7 @@ const url = new URL(base);
 url.searchParams.set('backend', 'webgl');
 if (pin) url.searchParams.set('t', String(t));
 if (!args.hud) url.searchParams.set('shot', '1');
+if (!args.cine) url.searchParams.set('cine', '0'); // camera shots off, so review shots stay at the default framing
 if (args.query) for (const [k, v] of new URLSearchParams(args.query)) url.searchParams.set(k, v);
 
 const customExe = process.env.CHROMIUM_PATH;

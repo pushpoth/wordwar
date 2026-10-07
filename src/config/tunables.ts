@@ -61,6 +61,7 @@ export const KNOBS: Record<string, Knob[]> = {
     { key: 'camera.elevation', label: 'start tilt °', value: c.elevationDeg, min: 20, max: 85, step: 1, apply: 'live' },
     { key: 'camera.azimuth', label: 'start heading °', value: c.azimuthDeg, min: -180, max: 180, step: 1, apply: 'live' },
     { key: 'camera.minTilt', label: 'lowest tilt °', value: 36, min: 10, max: 70, step: 1, apply: 'live' },
+    { key: 'camera.cinematics', label: 'cinematic shots', value: true, apply: 'live' },
     { key: 'camera.fov', label: 'field of view °', value: c.fov, min: 15, max: 60, step: 1, apply: 'live' },
     { key: 'camera.targetY', label: 'look-at height', value: c.targetOffset[1], min: -2, max: 3, step: 0.05, apply: 'live' },
     { key: 'camera.targetZ', label: 'look-at depth', value: c.targetOffset[2], min: -4, max: 4, step: 0.05, apply: 'live' },

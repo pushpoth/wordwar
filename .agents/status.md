@@ -76,6 +76,14 @@ Open from phase 0 (scheduled as phase 2, visual and performance pass):
 - **Art gaps against the reference:** the islands still read as low-poly toys,
   ships lack weathering and wakes, and the smoke plume is light grey and faceted.
 
+Camera shots (2026-10-08, pulled forward from phase 3): the camera pans to the ship being targeted and
+orbits around it (`focusOn`); a new mission opens on a close, high shot of the sub surfacing, then settles to the
+board's default framing; the torpedo that sinks a ship gets a three-part shot (behind the sub with the ship in view,
+riding the torpedo in, then pulling back and circling the wreck). Shots live in `src/game/shots.ts` (pure, tested)
+and play through `view.play` in `src/render/camera.ts`. Any camera control from the player ends a shot softly.
+`?cine=0`, the tuner's "cinematic shots" knob and the system's reduced-motion setting turn them off; the screenshot
+script turns them off unless given `--cine`. Not yet tuned by eye on a device.
+
 ## Active plan
 
 [Campaign build](plans/campaign-build.md): phases 4–6 as one plan, in slices. Slice 1 is built
