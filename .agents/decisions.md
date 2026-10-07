@@ -155,3 +155,11 @@ Append-only. Close an entry by changing its status; never delete one.
   input ends a shot at once. Shots are off with `?cine=0`, the tuner knob, or reduced motion.
 - **Why:** The user asked for transitions between game states. Poses-by-function keep the shots testable without a
   renderer and leave room for more (target reveal, mission end) without new camera code.
+
+## 2026-10-08 · Shots are tuned with knobs, not a timeline editor
+- **Status:** active
+- **Decision:** Every time, distance, tilt, heading and speed in the opening and kill shots is a tuner knob (group
+  "Camera shots", defaults in `LOOK.shots`), with Play buttons. The shots keep their fixed shape (opening: hold then
+  ease out; kill: swing in, follow, pull back and circle). A keyframe or timeline editor is not built.
+- **Why:** Knobs cover the "right spot and pace" tuning at little cost. If the user later wants more or different
+  phases, the next step is shots as data (a list of timed poses) with the knobs editing that list.

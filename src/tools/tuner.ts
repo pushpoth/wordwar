@@ -73,6 +73,11 @@ export function mountTuner() {
       });
       if (k.hint) binding.element.title = k.hint;
     }
+    if (group === 'Camera shots') {
+      const play = (which: string) => () => window.dispatchEvent(new CustomEvent('ww:shot', { detail: which }));
+      folder.addButton({ title: '▶ Play opening shot' }).on('click', play('intro'));
+      folder.addButton({ title: '▶ Play kill shot' }).on('click', play('kill'));
+    }
     folder.addButton({ title: `Reset ${group.toLowerCase()}` }).on('click', () => {
       tune.reset(knobs.map((k) => k.key));
       for (const k of knobs) model[k.key] = tune.get(k.key);

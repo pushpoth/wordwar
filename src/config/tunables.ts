@@ -28,6 +28,8 @@ type Knob = {
 
 const c = LOOK.camera;
 const p = LOOK.post;
+const si = LOOK.shots.intro;
+const sk = LOOK.shots.kill;
 
 export const KNOBS: Record<string, Knob[]> = {
   Quality: [
@@ -65,6 +67,37 @@ export const KNOBS: Record<string, Knob[]> = {
     { key: 'camera.fov', label: 'field of view °', value: c.fov, min: 15, max: 60, step: 1, apply: 'live' },
     { key: 'camera.targetY', label: 'look-at height', value: c.targetOffset[1], min: -2, max: 3, step: 0.05, apply: 'live' },
     { key: 'camera.targetZ', label: 'look-at depth', value: c.targetOffset[2], min: -4, max: 4, step: 0.05, apply: 'live' },
+  ],
+  'Camera shots': [
+    { key: 'shot.focusRate', label: 'pan to ship speed', value: LOOK.shots.focusRate, min: 0.5, max: 10, step: 0.1, apply: 'live', hint: 'How briskly the camera pans to the targeted ship (higher = quicker).' },
+    { key: 'shot.returnRate', label: 'ease back speed', value: LOOK.shots.returnRate, min: 0.5, max: 10, step: 0.1, apply: 'live', hint: 'How briskly the camera returns after a shot ends or is interrupted.' },
+    { key: 'shot.intro.surface', label: 'opening: sub rise s', value: si.surface, min: 0.5, max: 8, step: 0.1, apply: 'live' },
+    { key: 'shot.intro.depth', label: 'opening: sub start depth', value: si.depth, min: 0.3, max: 4, step: 0.1, apply: 'live' },
+    { key: 'shot.intro.hold', label: 'opening: hold s', value: si.hold, min: 0, max: 5, step: 0.1, apply: 'live', hint: 'Seconds held close after the sub has surfaced.' },
+    { key: 'shot.intro.settle', label: 'opening: ease out s', value: si.settle, min: 0.5, max: 12, step: 0.1, apply: 'live' },
+    { key: 'shot.intro.rate', label: 'opening: ease out speed', value: si.rate, min: 0.3, max: 6, step: 0.1, apply: 'live' },
+    { key: 'shot.intro.dist', label: 'opening: distance', value: si.dist, min: 3, max: 20, step: 0.1, apply: 'live' },
+    { key: 'shot.intro.tilt', label: 'opening: tilt °', value: si.tilt, min: 30, max: 85, step: 1, apply: 'live', hint: 'Keep it steep enough that the horizon stays out of frame.' },
+    { key: 'shot.intro.heading', label: 'opening: heading °', value: si.heading, min: -180, max: 180, step: 1, apply: 'live', hint: 'Degrees from the default heading.' },
+    { key: 'shot.intro.drift', label: 'opening: drift °/s', value: si.drift, min: -20, max: 20, step: 0.5, apply: 'live' },
+    { key: 'shot.kill.lead', label: 'kill: swing-in s', value: sk.lead, min: 0, max: 5, step: 0.1, apply: 'live', hint: 'Time the camera takes to get behind the sub before the torpedo launches.' },
+    { key: 'shot.kill.run', label: 'kill: torpedo run s', value: sk.run, min: 0.4, max: 6, step: 0.1, apply: 'live' },
+    { key: 'shot.kill.after', label: 'kill: pull-back s', value: sk.after, min: 0, max: 20, step: 0.5, apply: 'live', hint: 'How long the camera circles the wreck.' },
+    { key: 'shot.kill.cardDelay', label: 'kill: end card delay s', value: sk.cardDelay, min: 0, max: 12, step: 0.1, apply: 'live' },
+    { key: 'shot.kill.aim', label: 'kill: aim along path', value: sk.aim, min: 0, max: 1, step: 0.01, apply: 'live', hint: '0 looks at the sub, 1 at the ship.' },
+    { key: 'shot.kill.closeDist', label: 'kill: close-up distance ×', value: sk.closeDist, min: 0.4, max: 2.5, step: 0.05, apply: 'live' },
+    { key: 'shot.kill.closeTilt', label: 'kill: close-up tilt °', value: sk.closeTilt, min: 18, max: 80, step: 1, apply: 'live' },
+    { key: 'shot.kill.closeHeading', label: 'kill: close-up heading °', value: sk.closeHeading, min: -90, max: 90, step: 1, apply: 'live', hint: 'Degrees off straight behind the sub.' },
+    { key: 'shot.kill.closeRate', label: 'kill: close-up speed', value: sk.closeRate, min: 0.3, max: 8, step: 0.1, apply: 'live' },
+    { key: 'shot.kill.followDist', label: 'kill: follow distance', value: sk.followDist, min: 2, max: 14, step: 0.1, apply: 'live' },
+    { key: 'shot.kill.followTilt', label: 'kill: follow tilt °', value: sk.followTilt, min: 18, max: 80, step: 1, apply: 'live' },
+    { key: 'shot.kill.followSwing', label: 'kill: follow swing °', value: sk.followSwing, min: -90, max: 90, step: 1, apply: 'live', hint: 'Degrees the camera swings around the torpedo during its run.' },
+    { key: 'shot.kill.followRate', label: 'kill: follow tightness', value: sk.followRate, min: 1, max: 12, step: 0.1, apply: 'live' },
+    { key: 'shot.kill.pullDist', label: 'kill: pull-back distance ×', value: sk.pullDist, min: 0.4, max: 2.5, step: 0.05, apply: 'live' },
+    { key: 'shot.kill.pullTilt', label: 'kill: pull-back tilt °', value: sk.pullTilt, min: 18, max: 80, step: 1, apply: 'live' },
+    { key: 'shot.kill.pullHeading', label: 'kill: pull-back heading °', value: sk.pullHeading, min: -180, max: 180, step: 1, apply: 'live' },
+    { key: 'shot.kill.circle', label: 'kill: circle speed °/s', value: sk.circle, min: -40, max: 40, step: 0.5, apply: 'live' },
+    { key: 'shot.kill.pullRate', label: 'kill: pull-back speed', value: sk.pullRate, min: 0.3, max: 8, step: 0.1, apply: 'live' },
   ],
   'Sun & sea': [
     { key: 'sun.elevation', label: 'sun height °', value: LOOK.sun.elevationDeg, min: 2, max: 80, step: 1, apply: 'live' },

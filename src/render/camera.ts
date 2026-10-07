@@ -147,7 +147,7 @@ export function createCamera(aspect: number) {
     if (!script) return false;
     const { restore } = script;
     script = null;
-    goal.rate = 2.5;
+    goal.rate = tune.get<number>('shot.returnRate');
     goal.az = orbit.az + wrap180(restore.az - orbit.az);
     goal.el = restore.el;
     goal.dist = restore.dist;
@@ -210,7 +210,7 @@ export function createCamera(aspect: number) {
     }
     if (!steered) {
       const want = focus ? { x: focus.x, y: center.y, z: focus.z } : center;
-      const k = 1 - Math.exp(-dt * 3);
+      const k = 1 - Math.exp(-dt * tune.get<number>('shot.focusRate'));
       if (Math.abs(want.x - target.x) + Math.abs(want.z - target.z) > 0.002) {
         target.x += (want.x - target.x) * k;
         target.y += (want.y - target.y) * k;

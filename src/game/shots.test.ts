@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { INTRO_SECONDS, introShot, KILL_AFTER, KILL_LEAD, KILL_RUN, killShot } from './shots';
+import { LOOK } from '../config/look';
+import { introSeconds, introShot, killShot } from './shots';
+
+const intro = LOOK.shots.intro;
+const kill = LOOK.shots.kill;
+const KILL_LEAD = kill.lead;
+const KILL_RUN = kill.run;
+const KILL_AFTER = kill.after;
+const INTRO_SECONDS = introSeconds(intro);
 
 const home = { az: -28, el: 52, dist: 25 };
 
@@ -41,5 +49,18 @@ describe('killShot', () => {
     expect(a.dist!).toBeGreaterThan(shot(impact - 0.5)!.dist!);
     expect(b.az!).toBeGreaterThan(a.az!);
     expect(shot(impact + KILL_AFTER + 0.1)).toBeNull();
+  });
+});
+
+describe('shot settings', () => {
+  it('lengthen the opening shot when its times grow', () => {
+    const slow = { ...intro, hold: intro.hold + 2 };
+    expect(introShot({ x: 0, z: 0 }, home, slow)(INTRO_SECONDS + 0.1)).not.toBeNull();
+    expect(introShot({ x: 0, z: 0 }, home, slow)(introSeconds(slow) + 0.1)).toBeNull();
+  });
+  it('move the kill shot camera farther when its distances grow', () => {
+    const near = killShot({ x: 0, z: 0 }, { x: 6, z: 0 }, 5, kill)(0.1)!;
+    const far = killShot({ x: 0, z: 0 }, { x: 6, z: 0 }, 5, { ...kill, closeDist: 2 })(0.1)!;
+    expect(far.dist!).toBeCloseTo(near.dist! * 2);
   });
 });

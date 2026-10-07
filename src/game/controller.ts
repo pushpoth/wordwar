@@ -20,7 +20,8 @@ import { shipModels } from '../config/ships';
 import { createGame, DEFAULT_MISSION, restoreGame, type Game } from './game';
 import { createHud, type MenuAction } from './hud';
 import { installKeyboard, type Intents } from './input';
-import { introShot, KILL_LEAD, KILL_RUN, killShot, SURFACE_SECONDS } from './shots';
+import { LOOK } from '../config/look';
+import { introShot, killShot, type IntroParams, type KillParams } from './shots';
 import { currentLevel, isUnlocked, loadProgress, record, writeProgress } from './progress';
 import { clearSave, loadSave, writeSave } from './save';
 
@@ -28,8 +29,6 @@ const PING_TO_REVEAL = 0.45;
 const TORPEDO_RUN = 0.6;
 const END_CARD_DELAY = 2.6;
 const SUB_TURN_RATE = 0.7; // radians per second
-/** How far below the surface the submarine starts when it surfaces at the start of a mission. */
-const SUB_DEPTH = 1.8;
 const smooth = (x: number) => x * x * (3 - 2 * x);
 
 type Scheduled = { at: number; run: () => void };
@@ -83,6 +82,12 @@ export async function createController(scene: Scene, board: Board, hulls: Hulls,
   let torpRun = TORPEDO_RUN;
   /** Set when a new mission starts; the opening shot plays once the game is running. */
   let introPending = false;
+  /** The camera-shot settings, read from the tuner each time a shot starts. */
+  const shotParams = <T extends object>(prefix: string, defaults: T) =>
+    Object.fromEntries(Object.keys(defaults).map((k) => [k, tune.get<number>(`${prefix}.${k}`)])) as T;
+  const introParams = () => shotParams('shot.intro', LOOK.shots.intro) as IntroParams;
+  const killParams = () => shotParams('shot.kill', LOOK.shots.kill) as KillParams;
+  let surface: { seconds: number; depth: number } = { seconds: LOOK.shots.intro.surface, depth: LOOK.shots.intro.depth };
   let surfaceAt = -99;
   let ended = false;
   let lastCamera: Camera | null = null;
@@ -278,8 +283,9 @@ export async function createController(scene: Scene, board: Board, hulls: Hulls,
     // the torpedo then runs slowly, and everything it triggers waits for the impact.
     const killed = events.find((e) => e.type === 'unit:destroyed') as Extract<EngineEvent, { type: 'unit:destroyed' }> | undefined;
     const cine = !!killed && cinematics();
-    const lead = cine ? KILL_LEAD : 0;
-    const run = cine ? KILL_RUN : TORPEDO_RUN;
+    const kp = killParams();
+    const lead = cine ? kp.lead : 0;
+    const run = cine ? kp.run : TORPEDO_RUN;
     const arrive = lead + run;
     for (const e of events) {
       switch (e.type) {
@@ -301,7 +307,7 @@ export async function createController(scene: Scene, board: Board, hulls: Hulls,
         case 'torpedo:fired':
           hud.note(`TORPEDO AWAY · ${e.letter}`);
           launchTorpedo(e.targetUnitId, lead, run);
-          if (cine) playKillShot(e.targetUnitId);
+          if (cine) playKillShot(e.targetUnitId, kp);
           break;
         case 'torpedo:denied':
           hud.note(e.reason === 'already_tried' ? 'LETTER ALREADY TRIED' : e.reason === 'torpedoes_empty' ? 'OUT OF TORPEDOES' : 'MISSION OVER');
@@ -331,7 +337,7 @@ export async function createController(scene: Scene, board: Board, hulls: Hulls,
         case 'mission:ended':
           ended = true;
           clearSave();
-          later(arrive + (cine ? 3.5 : END_CARD_DELAY), () => endCard(e.summary));
+          later(arrive + (cine ? kp.cardDelay : END_CARD_DELAY), () => endCard(e.summary));
           break;
         default:
           break;
@@ -350,11 +356,35 @@ export async function createController(scene: Scene, board: Board, hulls: Hulls,
     torpRun = run;
   }
 
-  function playKillShot(unitId: string) {
+  function playKillShot(unitId: string, params: KillParams) {
     const u = game.unit(unitId);
     if (!u) return;
-    view.play(killShot({ x: subFloat.x, z: subFloat.z }, unitMid(u), u.length));
+    view.play(killShot({ x: subFloat.x, z: subFloat.z }, unitMid(u), u.length, params));
   }
+
+  function playIntro() {
+    const params = introParams();
+    surface = { seconds: params.surface, depth: params.depth };
+    surfaceAt = now;
+    view.play(introShot({ x: subFloat.x, z: subFloat.z }, view.home(), params), view.home());
+  }
+
+  // The tuner's "Play" buttons: run a shot on the spot, whatever the game is doing.
+  window.addEventListener('ww:shot', (ev) => {
+    const which = (ev as CustomEvent<string>).detail;
+    if (which === 'intro') playIntro();
+    else if (which === 'kill') {
+      const p = killParams();
+      // Aim at the targeted or any live ship, else at an empty spot ahead of the sub.
+      const ship = game.unit(game.state.activeUnitId) ?? game.state.units.find((u) => !u.destroyed && discovered.includes(u.id));
+      const at = ship ? unitMid(ship) : { x: subFloat.x + 6, z: subFloat.z };
+      board.uniforms.torpFrom.value.set(subFloat.x, subFloat.z);
+      board.uniforms.torpTo.value.set(at.x, at.z);
+      torpStart = now + p.lead;
+      torpRun = p.run;
+      view.play(killShot({ x: subFloat.x, z: subFloat.z }, at, ship?.length ?? 4, p));
+    }
+  });
 
   // ---- Pause and menus ----------------------------------------------------
 
@@ -524,14 +554,13 @@ export async function createController(scene: Scene, board: Board, hulls: Hulls,
     if (introPending && !isPaused() && !hud.isMenuOpen()) {
       introPending = false;
       if (cinematics()) {
-        surfaceAt = t;
-        view.play(introShot({ x: subFloat.x, z: subFloat.z }, view.home()), view.home());
+        playIntro();
       } else {
         surfaceAt = -99;
       }
     }
     // The submarine rises from below the surface (it starts submerged until the shot begins).
-    subFloat.lift = surfaceAt === -99 ? 0 : -SUB_DEPTH * (1 - smooth(Math.min(1, Math.max(0, (t - surfaceAt) / SURFACE_SECONDS))));
+    subFloat.lift = surfaceAt === -99 ? 0 : -surface.depth * (1 - smooth(Math.min(1, Math.max(0, (t - surfaceAt) / surface.seconds))));
 
     board.uniforms.pingAge.value = t - pingStart;
     board.uniforms.pingCenter.value.set(subFloat.x, subFloat.z);

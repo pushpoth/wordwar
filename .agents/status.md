@@ -82,7 +82,12 @@ board's default framing; the torpedo that sinks a ship gets a three-part shot (b
 riding the torpedo in, then pulling back and circling the wreck). Shots live in `src/game/shots.ts` (pure, tested)
 and play through `view.play` in `src/render/camera.ts`. Any camera control from the player ends a shot softly.
 `?cine=0`, the tuner's "cinematic shots" knob and the system's reduced-motion setting turn them off; the screenshot
-script turns them off unless given `--cine`. Not yet tuned by eye on a device.
+script turns them off unless given `--cine`. The user found them good (2026-10-08). The tuner's "Camera shots" group sets every time, distance, tilt, heading and
+speed in them (`LOOK.shots` holds the defaults), with ▶ Play buttons for the opening and kill shots; paste "Copy changes"
+back to make new defaults.
+
+Branches: `main` was merged from `phase-1-gameplay` on 2026-10-08 (the user asked, as a checkpoint; Vercel production
+builds from `main`). Day-to-day work still goes to `phase-1-gameplay`.
 
 ## Active plan
 
