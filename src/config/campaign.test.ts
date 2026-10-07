@@ -4,6 +4,7 @@ import { createMission } from '../engine/mission';
 import type { MissionSummary } from '../engine/types';
 import { configFor, LEVELS, levelById, starsFor } from './campaign';
 import { shipClassFor, SHIP_CLASSES } from './ships';
+import { MAX_HULLS } from './limits';
 
 describe('campaign levels', () => {
   it('have unique, consecutive ids starting at 1', () => {
@@ -19,8 +20,18 @@ describe('campaign levels', () => {
     }
   });
 
-  it('never shrink the fleet, and keep star targets inside the budget', () => {
-    for (let i = 1; i < LEVELS.length; i++) expect(LEVELS[i].unitCount).toBeGreaterThanOrEqual(LEVELS[i - 1].unitCount);
+  it('use supported board sizes and never more ships than the water shader can draw', () => {
+    for (const l of LEVELS) {
+      expect([8, 10, 12, 15, 18]).toContain(l.gridSize);
+      expect(l.unitCount + 1).toBeLessThanOrEqual(MAX_HULLS); // the submarine takes one slot
+    }
+  });
+
+  it('never shrink the board or the fleet, and keep star targets inside the budget', () => {
+    for (let i = 1; i < LEVELS.length; i++) {
+      expect(LEVELS[i].unitCount).toBeGreaterThanOrEqual(LEVELS[i - 1].unitCount);
+      expect(LEVELS[i].gridSize).toBeGreaterThanOrEqual(LEVELS[i - 1].gridSize);
+    }
     for (const l of LEVELS) expect(l.starUse[1]).toBeLessThan(l.starUse[0]);
   });
 });

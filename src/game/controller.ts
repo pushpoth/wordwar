@@ -36,7 +36,10 @@ type Scheduled = { at: number; run: () => void };
  * the HUD. Effects play out in scene time, so the board changes when the
  * ping or the torpedo arrives, not the instant a key is pressed.
  */
-export async function createController(scene: Scene, board: Board, hulls: Hulls, view: CameraControls) {
+/** What the controller needs from the rest of the scene when the board changes size. */
+export type SceneEnv = { setShadowExtent: (boardSize: number) => void; setIslands: (list: IslandShore[]) => void };
+
+export async function createController(scene: Scene, board: Board, hulls: Hulls, view: CameraControls, env: SceneEnv) {
   const root = new Group();
   root.name = 'game';
   scene.add(root);
@@ -98,6 +101,7 @@ export async function createController(scene: Scene, board: Board, hulls: Hulls,
     if (level) return configFor(level);
     return {
       ...DEFAULT_MISSION,
+      gridSize: tune.get('game.gridSize'),
       unitCount: tune.get('game.unitCount'),
       torpedoBudget: tune.get('game.torpedoBudget'),
       batteryRegenSeconds: tune.get('game.batteryRegen'),
@@ -110,11 +114,26 @@ export async function createController(scene: Scene, board: Board, hulls: Hulls,
     else writeSave(game.save());
   }
 
+  let boardSize = 0;
+  /** Rebuild everything that depends on the board's size: cells, labels, scenery, shadows, camera. */
+  function resizeBoard(n: number) {
+    if (n === boardSize) return;
+    const first = boardSize === 0;
+    boardSize = n;
+    board.setSize(n);
+    labels.setSize(n);
+    scenery.layout(n);
+    env.setShadowExtent(n);
+    env.setIslands(scenery.islands);
+    view.setBoardSize(n, first);
+  }
+
   /** Begin a mission: a fresh one from a seed, or a restored one already in progress. Level 0 is the quick game. */
   function start(seed: number, restored?: Game, levelId = 0) {
     game?.dispose();
     game = restored ?? createGame(missionConfig(levelId), seed);
     seed = game.seed;
+    resizeBoard(game.state.grid.size);
     fleet.clear();
     board.clear();
     discovered = [];
@@ -338,14 +357,14 @@ export async function createController(scene: Scene, board: Board, hulls: Hulls,
           const rec = progress.levels[l.id];
           return {
             label: `${l.id}. ${l.name}`,
-            sub: `${l.unitCount} ships · ${l.torpedoBudget} torpedoes`,
+            sub: `${l.gridSize}×${l.gridSize} · ${l.unitCount} ships · ${l.torpedoBudget} torpedoes`,
             key: String(l.id),
             badge: rec ? stars(rec.stars) : undefined,
             locked: !isUnlocked(progress, l.id),
             run: () => startLevel(l.id),
           };
         }),
-        { label: 'Quick game', sub: 'Random 10×10, tuner settings', key: 'Q', run: () => start(randomSeed()) },
+        { label: 'Quick game', sub: 'Random board, tuner settings', key: 'Q', run: () => start(randomSeed()) },
         { label: 'Back', key: 'Esc', run: back },
       ],
     });

@@ -3,7 +3,14 @@ import { texture, vec4 } from 'three/tsl';
 
 const COLUMNS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
+const textures = new Map<string, CanvasTexture>();
 function labelTexture(text: string) {
+  let t = textures.get(text);
+  if (!t) textures.set(text, (t = makeLabelTexture(text)));
+  return t;
+}
+
+function makeLabelTexture(text: string) {
   const c = document.createElement('canvas');
   c.width = c.height = 128;
   const g = c.getContext('2d')!;
@@ -24,11 +31,11 @@ function labelTexture(text: string) {
  * Column letters along the far edge and row numbers down the left edge,
  * floating just above the water and turned to face the camera.
  */
-export function createBoardLabels(size: number) {
+export function createBoardLabels(initialSize: number) {
   const group = new Group();
   group.name = 'board-labels';
   const geo = new PlaneGeometry(0.62, 0.62);
-  const half = size / 2;
+  let half = initialSize / 2;
   const add = (text: string, x: number, z: number) => {
     const tex = texture(labelTexture(text));
     const m = new MeshBasicNodeMaterial({ transparent: true, depthWrite: false });
@@ -39,14 +46,23 @@ export function createBoardLabels(size: number) {
     mesh.renderOrder = 1;
     group.add(mesh);
   };
-  for (let i = 0; i < size; i++) {
-    add(COLUMNS[i], i - half + 0.5, -half - 0.55);
-    add(String(i + 1), -half - 0.6, i - half + 0.5);
+  /** Rebuild the letters and numbers for an n × n board. */
+  function setSize(size: number) {
+    for (const m of [...group.children] as Mesh[]) {
+      (m.material as MeshBasicNodeMaterial).dispose();
+      group.remove(m);
+    }
+    half = size / 2;
+    for (let i = 0; i < size; i++) {
+      add(COLUMNS[i], i - half + 0.5, -half - 0.55);
+      add(String(i + 1), -half - 0.6, i - half + 0.5);
+    }
   }
+  setSize(initialSize);
   /** Face the camera from any orbit angle (yaw and pitch, no roll). */
   function update(camera: Camera) {
     for (const m of group.children) m.quaternion.copy(camera.quaternion);
   }
 
-  return { group, update };
+  return { group, update, setSize };
 }

@@ -10,7 +10,7 @@ end to end before visuals and effects are tuned (phases 2 and 3).
 
 ## Scope
 
-**Slice 1 · Ladder and progress (prescriptive):**
+**Slice 1 · Ladder and progress ✅ built:**
 1. **Level catalog** `src/config/campaign.ts`: ordered levels (id, name, grid
    size, unit count, torpedo budget, battery regen, diagonals, word tier
    weights, star targets as shares of the torpedo budget). Slice 1 holds only 10×10 levels; each later slice
@@ -30,10 +30,16 @@ end to end before visuals and effects are tuned (phases 2 and 3).
    headless with a letter-frequency strategy and prints win rate and torpedoes
    used; a test pins each level's win rate inside a band.
 
-**Slice 2 · Map sizes (goals only):** boards of 8, 12, 15 and 18 cells; the
-board, labels, scenery layout and camera rebuild per mission; ship counts and
-classes scale; a frame-rate budget per size, measured on the Mac and iPhone
-(dev readout shows average fps and draws).
+**Slice 2 · Map sizes ✅ built 2026-10-07 (waiting on the user's play):** the ladder
+now climbs from 8×8 (levels 1–2) through 10×10, 12×12 and 15×15 to 18×18 (levels
+9–10), ten levels with two to seven ships. The board resizes per mission: one
+20×20 state texture reused at every size, labels rebuilt, scenery stretched
+with the board (two more islands and three more buoys from 13×13 up), the
+shadow frustum and camera distance scaled (smaller boards come closer so cells
+get bigger), the radar ring's speed scaled. Radar reveals per ping come from
+`RADAR_REVEALS_BY_GRID` (8×8 added: 3). The dev readout shows the board size and
+average and minimum fps over 10 s, for the per-size frame-rate budget: the user
+measures each size on the Mac and iPhone and reports.
 
 **Slice 3 · Difficulty (goals only):** modifiers beyond counts (fewer radar
 reveals, slower battery, diagonals, decoy-heavy tiers), a level ladder of about
@@ -48,7 +54,7 @@ unlockable rewards or modes, mission-select presentation.
 
 - **Reuse:** engine (`MissionConfig` already carries every knob), `createGame`,
   `restoreGame`, the menu card, local-storage save pattern.
-- **New:** catalog, ship table, progress store, mission-select view, bot.
+- **New:** catalog, ship table, progress store, mission-select view, bot; resizable board, labels and scenery.
 
 ## Build order (slice 1)
 
@@ -68,6 +74,7 @@ unlockable rewards or modes, mission-select presentation.
 - `npm run balance` shows every level winnable and difficulty rising level to level.
 - The user has played several levels on preview.
 
+# Amended: 2026-10-08 slice 2 built; ladder regraded to ten levels across five board sizes (the user's point: two ships on a big board are hard to find, so levels 1–2 are 8×8 with slightly longer words); bot budgets refitted.
 # Amended: 2026-10-07 stars come from torpedoes used (accuracy can top 100% because one torpedo can hit several tiles); level 8 drops tier-5 words (they don't always fit six ships on 10×10).
 
 ## Refinement gate

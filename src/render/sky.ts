@@ -57,8 +57,14 @@ export function createSky(scene: Scene, renderer: WebGPURenderer) {
   light.position.copy(sun).multiplyScalar(40);
   light.castShadow = true;
   light.shadow.mapSize.setScalar(tune.get('quality.shadowMapSize'));
-  const s = 14;
-  Object.assign(light.shadow.camera, { left: -s, right: s, top: s, bottom: -s, near: 1, far: 100 });
+  Object.assign(light.shadow.camera, { near: 1, far: 100 });
+  /** Cover the board and its islands: the shadow frustum grows with the board (14 for a 10×10). */
+  function setShadowExtent(boardSize: number) {
+    const s = 14 * Math.max(1, boardSize / 10);
+    Object.assign(light.shadow.camera, { left: -s, right: s, top: s, bottom: -s });
+    light.shadow.camera.updateProjectionMatrix();
+  }
+  setShadowExtent(10);
   light.shadow.bias = -0.0004;
   light.shadow.normalBias = 0.02;
   light.shadow.radius = 3;
@@ -82,5 +88,5 @@ export function createSky(scene: Scene, renderer: WebGPURenderer) {
   tune.on('sun.intensity', (v) => (light.intensity = v as number));
   tune.on('sky.envIntensity', (v) => (scene.environmentIntensity = v as number));
 
-  return { sky, sun, light, onSunMove: (fn: (sun: Vector3) => void) => moved.add(fn) };
+  return { sky, sun, light, setShadowExtent, onSunMove: (fn: (sun: Vector3) => void) => moved.add(fn) };
 }

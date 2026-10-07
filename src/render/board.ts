@@ -53,15 +53,21 @@ function glyphAtlas() {
  * a ship tile), the target's cells, the submarine's sonar ring, a radar ping
  * sweeping out from the sub, a torpedo run and a blast shock ring.
  */
-export function createBoard(size: number) {
-  const data = new Uint8Array(size * size * 4);
-  const stateTex = new DataTexture(data, size, size, RGBAFormat, UnsignedByteType);
+/** The largest board the state texture can hold; smaller boards use its top-left corner. */
+export const MAX_BOARD = 20;
+
+export function createBoard(initialSize: number) {
+  let size = initialSize;
+  const data = new Uint8Array(MAX_BOARD * MAX_BOARD * 4);
+  const stateTex = new DataTexture(data, MAX_BOARD, MAX_BOARD, RGBAFormat, UnsignedByteType);
   stateTex.magFilter = stateTex.minFilter = NearestFilter;
   stateTex.needsUpdate = true;
   const atlas = glyphAtlas();
 
   const u = {
     size: uniform(size),
+    /** How fast the radar ring travels, in cells per second (scaled with the board). */
+    pingSpeed: uniform(9),
     lineGlow: uniform(0.95),
     sonarCenter: uniform(new Vector2(0, 0)),
     sonarRadius: uniform(2.2),
@@ -78,7 +84,7 @@ export function createBoard(size: number) {
 
   /** Set a cell's state, its letter (A–Z or '' for none) and whether it belongs to the current target. */
   function setCell(col: number, row: number, state: CellState, letter = '', target = false) {
-    const i = (row * size + col) * 4;
+    const i = (row * MAX_BOARD + col) * 4;
     data[i] = state;
     data[i + 1] = letter ? letter.toUpperCase().charCodeAt(0) - 64 : 0;
     data[i + 2] = target ? 1 : 0;
@@ -104,7 +110,7 @@ export function createBoard(size: number) {
     const outer = min(min(local.x, local.y), min(u.size.sub(local.x), u.size.sub(local.y)));
     const frame = smoothstep(aa.mul(1.5).add(0.03), float(0.0), abs(outer)).mul(1.2);
 
-    const px = texture(stateTex, cell.add(0.5).div(u.size));
+    const px = texture(stateTex, cell.add(0.5).div(MAX_BOARD));
     const st = px.r.mul(255).add(0.5).floor();
     const letter = px.g.mul(255).add(0.5).floor();
     const isMiss = st.equal(1).select(float(1), float(0));
@@ -144,7 +150,7 @@ export function createBoard(size: number) {
 
     // Radar ping: a bright ring sweeping out across the board from the sub.
     const pd = base.sub(u.pingCenter).length();
-    const pingR = u.pingAge.mul(9);
+    const pingR = u.pingAge.mul(u.pingSpeed);
     const ping = smoothstep(0.35, 0.0, abs(pd.sub(pingR))).mul(smoothstep(0.0, 0.1, pd.sub(pingR).negate().add(0.35)))
       .mul(exp(u.pingAge.mul(-1.6))).mul(inside.mul(0.7).add(0.3)).mul(1.6);
 
@@ -184,7 +190,15 @@ export function createBoard(size: number) {
     u.glyphTurn.value = ((Math.round(-azimuthDeg / 90) % 4) + 4) % 4;
   }
 
-  return { overlay, setCell, clear, cellCenter, faceCamera, uniforms: u, size };
+  /** Switch to an n × n board (the cells are cleared). */
+  function setSize(n: number) {
+    size = n;
+    u.size.value = n;
+    u.pingSpeed.value = (9 * n) / 10;
+    clear();
+  }
+
+  return { overlay, setCell, clear, cellCenter, faceCamera, setSize, uniforms: u, get size() { return size; } };
 }
 
 export type Board = ReturnType<typeof createBoard>;

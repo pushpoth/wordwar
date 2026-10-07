@@ -135,3 +135,12 @@ Append-only. Close an entry by changing its status; never delete one.
   knobs. Saves therefore need no extra field. A restored mission whose settings don't match its level (a save from before
   the ladder) isn't scored.
 - **Why:** Smallest change that lets restored missions record stars.
+
+## 2026-10-08 · Ladder starts on 8×8 and grows the board with the level
+- **Status:** active
+- **Decision:** Levels 1–2 are 8×8 (3 radar reveals per ping, added to the engine table), then 10, 12, 15 and 18, two
+  levels per size. Early levels use slightly longer words (tiers 2–3). Smaller boards move the camera closer; larger ones
+  pull back a little less than in proportion, so an 18×18 board crops slightly at the edges instead of shrinking to a toy.
+- **Why:** The user's play: two ships on a big board are hard to find, and very short words take many torpedoes to guess,
+  so a bigger board should come with more ships, not fewer. The bot doesn't model the cost of finding ships by radar
+  (it only waits out the battery), so its budgets say nothing about that: the user's notes decide.

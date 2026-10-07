@@ -34,6 +34,7 @@ export function setBatteryMax(v: number) {
 export const BATTERY_REGEN_SECONDS = 5;
 
 export const RADAR_REVEALS_BY_GRID: Record<number, number> = {
+  8: 3,
   10: 4,
   12: 5,
   15: 6,

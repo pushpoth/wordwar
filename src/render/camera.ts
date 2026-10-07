@@ -51,9 +51,23 @@ export function createCamera(aspect: number) {
   const keys = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'];
   /** Where a button press or a gesture is easing the camera to; null when it isn't. */
   const goal: { az: number | null; dist: number | null } = { az: null, dist: null };
+  // The framing is tuned for a 10×10 board; other sizes scale the distance (and the look-at point) to match.
+  let sizeScale = 1;
   let baseDistance = distance;
   const clampDist = (d: number) => MathUtils.clamp(d, baseDistance * ZOOM_MIN, baseDistance * ZOOM_MAX);
   const controls = {
+    /**
+     * Frame an n × n board: smaller boards come closer so the cells are bigger,
+     * larger ones pull back (a little less than in proportion, so the board
+     * may crop slightly rather than shrink to a toy).
+     */
+    setBoardSize: (n: number, instant = false) => {
+      sizeScale = n <= 10 ? n / 10 : 1 + (n / 10 - 1) * 0.93;
+      baseDistance = tune.get<number>('camera.distance') * sizeScale;
+      target.set(0, tune.get<number>('camera.targetY'), tune.get<number>('camera.targetZ') * sizeScale);
+      if (instant) { distance = baseDistance; goal.dist = null; place(); }
+      else goal.dist = baseDistance;
+    },
     /** Re-fit the view (after the HUD's docked area changes size). */
     refit: () => fitFov(camera, camera.aspect),
     /** Turn the board by a quarter turn (negative: the other way). */
@@ -102,9 +116,9 @@ export function createCamera(aspect: number) {
 
   if (!view) {
     tune.onAny(['camera.distance', 'camera.targetY', 'camera.targetZ'], () => {
-      distance = baseDistance = tune.get('camera.distance');
+      distance = baseDistance = tune.get<number>('camera.distance') * sizeScale;
       goal.dist = null;
-      target.set(0, tune.get('camera.targetY'), tune.get('camera.targetZ'));
+      target.set(0, tune.get('camera.targetY'), tune.get<number>('camera.targetZ') * sizeScale);
       place();
     });
     tune.on('camera.elevation', (v) => { orbit.el = v as number; place(); });

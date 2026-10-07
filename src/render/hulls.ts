@@ -3,7 +3,8 @@ import { abs, exp, float, max, sin, smoothstep, texture, uniformArray, vec2 } fr
 import { noiseTexture } from './util/noise-texture';
 import { simTime as time } from './clock';
 
-export const MAX_HULLS = 8;
+import { MAX_HULLS } from '../config/limits';
+export { MAX_HULLS };
 
 /** A ship's footprint on the water: centre, heading (radians, 0 = +X), size and speed. */
 export type HullFootprint = { x: number; z: number; yaw: number; halfLength: number; halfBeam: number; speed: number };

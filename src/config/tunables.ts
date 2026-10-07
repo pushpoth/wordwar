@@ -74,7 +74,8 @@ export const KNOBS: Record<string, Knob[]> = {
     { key: 'sea.ripple', label: 'ripple detail', value: 0.16, min: 0, max: 0.5, step: 0.01, apply: 'live' },
   ],
   Gameplay: [
-    { key: 'game.unitCount', label: 'enemy ships', value: 4, min: 1, max: 8, step: 1, apply: 'restart' },
+    { key: 'game.gridSize', label: 'map size', value: 10, options: { '8×8': 8, '10×10': 10, '12×12': 12, '15×15': 15, '18×18': 18 }, apply: 'restart' },
+    { key: 'game.unitCount', label: 'enemy ships', value: 4, min: 1, max: 7, step: 1, apply: 'restart' },
     { key: 'game.torpedoBudget', label: 'torpedoes', value: 60, min: 5, max: 200, step: 1, apply: 'restart' },
     { key: 'game.batteryRegen', label: 'battery recharge s', value: 5, min: 0.5, max: 30, step: 0.5, apply: 'restart' },
     { key: 'game.diagonal', label: 'diagonal ships', value: false, apply: 'restart' },

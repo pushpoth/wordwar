@@ -62,7 +62,7 @@ async function boot() {
   // `?demo` shows the fixed phase 0 diorama for visual review; otherwise play.
   const world = params.has('demo')
     ? await buildDiorama(scene, board, hulls)
-    : await createController(scene, board, hulls, controls);
+    : await createController(scene, board, hulls, controls, { setShadowExtent: sky.setShadowExtent, setIslands: ocean.setIslands });
   mark('world');
   installGestures(renderer.domElement, (d) => controls.nudge(d.dAz, d.dEl, d.zoom), (x, y) => 'tap' in world && world.tap(x, y));
   ocean.setIslands(world.islands);
@@ -92,6 +92,7 @@ async function boot() {
   window.__ww = state;
   let acc = 0;
   let accFrames = 0;
+  const recent: number[] = []; // fps samples, 500 ms apart: the last 10 s
   let lastStat = performance.now();
 
   // Cap at 60 fps: high-refresh screens would otherwise double the work (and the heat).
@@ -128,12 +129,15 @@ async function boot() {
     acc = now - lastStat;
     if (acc >= 500) {
       state.fps = (accFrames * 1000) / acc;
+      recent.push(state.fps);
+      if (recent.length > 20) recent.shift();
       accFrames = 0;
       lastStat = now;
       const info = renderer.info.render;
       statsEl.textContent =
         `${backend.toUpperCase()}  ${state.fps.toFixed(0)} fps\n` +
-        `${renderer.domElement.width}×${renderer.domElement.height} @${renderer.getPixelRatio().toFixed(2)}  ${info.drawCalls} draws  ${(info.triangles / 1000).toFixed(0)}k tris` +
+        `${renderer.domElement.width}×${renderer.domElement.height} @${renderer.getPixelRatio().toFixed(2)}  ${info.drawCalls} draws  ${(info.triangles / 1000).toFixed(0)}k tris\n` +
+        `board ${board.size}×${board.size}  avg ${(recent.reduce((a, b) => a + b, 0) / recent.length).toFixed(0)} min ${Math.min(...recent).toFixed(0)} fps (10 s)` +
         (pinnedTime === null ? '\n← → spin   ↑ ↓ tilt' : `\nt pinned ${pinnedTime}s`) +
         (marks.firstFrame ? `\nload ${(marks.firstFrame / 1000).toFixed(1)}s: gpu ${marks.renderer} models ${marks.models} world ${marks.world} shaders ${marks.shaders} 1st ${marks.firstFrame} ms` : '');
     }

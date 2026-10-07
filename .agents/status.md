@@ -79,10 +79,13 @@ Open from phase 0 (scheduled as phase 2, visual and performance pass):
 ## Active plan
 
 [Campaign build](plans/campaign-build.md): phases 4–6 as one plan, in slices. Slice 1 is built
-(2026-10-07): eight 10×10 levels (`src/config/campaign.ts`), stars from torpedoes used, unlocks and best scores
+(2026-10-07): the ladder (`src/config/campaign.ts`), stars from torpedoes used, unlocks and best scores
 saved in local storage (`wordwar.progress.v1`), a mission-select card (first load, pause menu, end card), ship
 classes by word length that all reuse the destroyer model (`src/config/ships.ts`), and a balance bot
-(`npm run balance`). `?level=N` opens a level directly. Next: map sizes (slice 2), then difficulty and polish. Phase 1's plan is archived (the game plays end to end on a Mac and
+(`npm run balance`). `?level=N` opens a level directly. Slice 2 (2026-10-08): ten levels on 8×8, 10×10, 12×12, 15×15 and 18×18 boards; the board, labels,
+scenery, shadows and camera resize per mission (`resizeBoard` in the controller). The `?tune` readout shows board
+size and 10 s average and minimum fps: per-size frame rates are the user's to measure. The quick game's map size is
+a tuner knob. Next: difficulty modifiers and polish (slices 3–4), tuned from the user's play notes. Phase 1's plan is archived (the game plays end to end on a Mac and
 an iPhone at 60 fps).
 
 ## Roadmap
@@ -95,7 +98,7 @@ Refine each later phase against the current state of the repo when it starts.
 | 1 · Playable mission ✅ | Engine port, full HUD, touch input | Missions won and lost on desktop and phone (done 2026-10-07) |
 | 2 · Visual and performance pass | Retune quality defaults (resolution, bloom, depth of field), then the phase 0 open items: sun glare, wakes and animation, weathering, wreck fire, art gaps against the reference; load time | Defaults look good on a Mac and an iPhone at 60 fps; screenshots hold up next to the reference |
 | 3 · Feel | Sonar-ping and torpedo-run effects, plus the remaining combat effects | Screenshots of every game event |
-| 4 · Map sizes | 8 / 10 / 12 / 15 / 18 grids; scenery and ship classes scale with size | Each size holds 60 fps |
+| 4 · Map sizes ✅ built | 8 / 10 / 12 / 15 / 18 grids; scenery and ship classes scale with size | Each size holds 60 fps (to be measured on devices) |
 | 5 · Difficulty | Level ladder and modifiers, balanced by a simulation bot | Win rates match the target curve |
 | 6 · Progression | Mission select and saved progress | Progress survives a browser restart |
 
