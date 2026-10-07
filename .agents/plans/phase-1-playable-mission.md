@@ -57,7 +57,7 @@ and a screenshot at desktop and phone size:
    moves under ~8 px does nothing. `touch-action: none` on the canvas. Tap an
    intel row to select that target. Typemariner's one-shot 90° drag-rotate is
    not ported (continuous orbit matches our camera).
-5. **Sonar dial.** A decorative SVG dial with a rotating sweep (port
+5. ✅ **Sonar dial.** A decorative SVG dial with a rotating sweep (port
    `ui/sonar-log.ts`' `SonarPanel`), pulsing on a radar ping. Range readout
    shows the radar's reveal count for this grid (`RADAR_REVEALS_BY_GRID`), not a slider.
 6. **Phone layout.** Today the intel panel and log are hidden under 760 px. Design

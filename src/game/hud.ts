@@ -45,6 +45,16 @@ export function createHud() {
   const status = el('div', 'panel status');
   const intel = el('div', 'panel intel', '<div class="label">Target intel</div><ul></ul><div class="empty">No contacts. Type a letter to ping.</div>');
   const word = el('div', 'panel word', '<div class="label">Word progress</div><div class="letters"></div><div class="keys"></div>');
+  const sonar = el('div', 'panel sonar', `
+    <div class="label">Sonar</div>
+    <svg viewBox="-60 -60 120 120" aria-hidden="true">
+      <circle r="55" class="face"/>
+      <circle r="40" class="ring"/><circle r="25" class="ring"/><circle r="10" class="ring"/>
+      <line x1="-55" x2="55" class="ring"/><line y1="-55" y2="55" class="ring"/>
+      <g class="sweep"><path d="M0 0 L55 0 A55 55 0 0 0 47.6 -27.5 Z"/></g>
+      <circle r="4" class="ping"/>
+    </svg>
+    <div class="range"><span class="label">Range</span><span class="value"></span></div>`);
   const log = el('div', 'panel log');
   const mode = el('div', 'panel mode', '<div class="value"></div><div class="hint"></div>');
   const toast = el('div', 'panel toast', '<div><div class="value"></div><div class="sub"></div></div>');
@@ -56,7 +66,7 @@ export function createHud() {
     <div class="group"><span class="label">Rotate</span><button type="button" data-act="rotate" aria-label="Rotate the board">⟳</button></div>
     <div class="group"><span class="label">Menu</span><button type="button" data-act="menu" aria-label="Pause menu">❚❚</button></div>`);
   const camBtn = (act: string) => cam.querySelector<HTMLButtonElement>(`[data-act="${act}"]`)!;
-  root.append(status, intel, word, log, mode, toast, scrim, menuEl, cam);
+  root.append(status, intel, word, sonar, log, mode, toast, scrim, menuEl, cam);
   document.body.appendChild(root);
 
   let selectFn: (id: string) => void = () => {};
@@ -181,6 +191,19 @@ export function createHud() {
   }
 
   /** A tap on a ship's row in the intel list. */
+  /** A radar ping went out: pulse the dial. */
+  function ping() {
+    const p = sonar.querySelector('.ping')!;
+    p.classList.remove('go');
+    void (p as unknown as HTMLElement).getBoundingClientRect();
+    p.classList.add('go');
+  }
+
+  /** How many tiles one ping can reveal on this grid. */
+  function setRange(n: number) {
+    sonar.querySelector('.range .value')!.textContent = String(n);
+  }
+
   function onSelect(fn: (id: string) => void) {
     selectFn = fn;
   }
@@ -205,7 +228,7 @@ export function createHud() {
     root.classList.add('ready');
   }
 
-  return { render, note, banner, menu, menuKey, onPause, onCamera, onLetter, onSelect, flash, ready, isMenuOpen: () => menuActions.length > 0 };
+  return { render, note, banner, menu, menuKey, onPause, onCamera, onLetter, onSelect, ping, setRange, flash, ready, isMenuOpen: () => menuActions.length > 0 };
 }
 
 export type Hud = ReturnType<typeof createHud>;

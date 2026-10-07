@@ -1,5 +1,5 @@
 import { Group, type Camera, type Scene } from 'three/webgpu';
-import { BATTERY_MAX } from '../config/balance';
+import { BATTERY_MAX, RADAR_REVEALS_BY_GRID } from '../config/balance';
 import type { EngineEvent, MissionState, Unit } from '../engine/types';
 import { loadModel, preloadModels } from '../render/assets';
 import { CELL, type Board } from '../render/board';
@@ -95,6 +95,7 @@ export async function createController(scene: Scene, board: Board, hulls: Hulls,
     game?.dispose();
     game = restored ?? createGame(missionConfig(), seed);
     seed = game.seed;
+    hud.setRange(RADAR_REVEALS_BY_GRID[game.state.config.gridSize] ?? 0);
     fleet.clear();
     board.clear();
     discovered = [];
@@ -221,6 +222,7 @@ export async function createController(scene: Scene, board: Board, hulls: Hulls,
         case 'radar:fired':
           hud.note(`SONAR PING · ${e.letter}`);
           pingStart = now;
+          hud.ping();
           break;
         case 'radar:resolved':
           later(PING_TO_REVEAL, () => {
