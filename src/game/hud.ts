@@ -50,10 +50,13 @@ export function createHud() {
   const toast = el('div', 'panel toast', '<div><div class="value"></div><div class="sub"></div></div>');
   const menuEl = el('div', 'panel menu');
   const scrim = el('div', 'scrim');
-  const pauseBtn = el('button', 'pause-btn', '❚❚');
-  pauseBtn.title = 'Pause (Space)';
-  pauseBtn.setAttribute('aria-label', 'Pause');
-  root.append(status, intel, word, log, mode, toast, scrim, menuEl, pauseBtn);
+  const cam = el('div', 'panel cam', `
+    <div class="group"><span class="label">Zoom</span>
+      <span class="pair"><button type="button" data-act="zoom-out" aria-label="Zoom out">−</button><button type="button" data-act="zoom-in" aria-label="Zoom in">+</button></span></div>
+    <div class="group"><span class="label">Rotate</span><button type="button" data-act="rotate" aria-label="Rotate the board">⟳</button></div>
+    <div class="group"><span class="label">Menu</span><button type="button" data-act="menu" aria-label="Pause menu">❚❚</button></div>`);
+  const camBtn = (act: string) => cam.querySelector<HTMLButtonElement>(`[data-act="${act}"]`)!;
+  root.append(status, intel, word, log, mode, toast, scrim, menuEl, cam);
   document.body.appendChild(root);
 
   const keys = word.querySelector('.keys')!;
@@ -176,7 +179,14 @@ export function createHud() {
   }
 
   function onPause(fn: () => void) {
-    pauseBtn.addEventListener('click', fn);
+    camBtn('menu').addEventListener('click', fn);
+  }
+
+  /** Camera buttons: zoom out and in, rotate a quarter turn. */
+  function onCamera(c: { zoomIn: () => void; zoomOut: () => void; rotate: () => void }) {
+    camBtn('zoom-in').addEventListener('click', c.zoomIn);
+    camBtn('zoom-out').addEventListener('click', c.zoomOut);
+    camBtn('rotate').addEventListener('click', c.rotate);
   }
 
   /** Reveal the HUD once the scene is ready (it stays hidden behind the loader). */
@@ -184,7 +194,7 @@ export function createHud() {
     root.classList.add('ready');
   }
 
-  return { render, note, banner, menu, menuKey, onPause, onLetter, flash, ready, isMenuOpen: () => menuActions.length > 0 };
+  return { render, note, banner, menu, menuKey, onPause, onCamera, onLetter, flash, ready, isMenuOpen: () => menuActions.length > 0 };
 }
 
 export type Hud = ReturnType<typeof createHud>;

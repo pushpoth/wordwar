@@ -6,6 +6,7 @@ import { CELL, type Board } from '../render/board';
 import type { HullFootprint, Hulls } from '../render/hulls';
 import { createBoardLabels } from '../render/labels';
 import type { IslandShore } from '../render/ocean';
+import type { CameraControls } from '../render/camera';
 import { createWordSign } from '../render/word-sign';
 import { footprint, ride, type Floater } from '../scene/buoyancy';
 import { SUB } from '../scene/diorama';
@@ -32,7 +33,7 @@ type Scheduled = { at: number; run: () => void };
  * the HUD. Effects play out in scene time, so the board changes when the
  * ping or the torpedo arrives, not the instant a key is pressed.
  */
-export async function createController(scene: Scene, board: Board, hulls: Hulls) {
+export async function createController(scene: Scene, board: Board, hulls: Hulls, view: CameraControls) {
   const root = new Group();
   root.name = 'game';
   scene.add(root);
@@ -324,6 +325,7 @@ export async function createController(scene: Scene, board: Board, hulls: Hulls)
   }
 
   hud.onPause(() => pause());
+  hud.onCamera({ zoomIn: view.zoomIn, zoomOut: view.zoomOut, rotate: () => view.rotate(1) });
   // Leaving the tab or app pauses the game; progress is already saved.
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) pause();

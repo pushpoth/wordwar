@@ -32,7 +32,7 @@ async function boot() {
   const { renderer, backend } = await createRenderer(stage);
   loader.set(0.12, 'Lighting the sky');
   const scene = new Scene();
-  const { camera, target, update: updateCamera, azimuth, onMove } = createCamera(window.innerWidth / window.innerHeight);
+  const { camera, target, update: updateCamera, azimuth, onMove, controls } = createCamera(window.innerWidth / window.innerHeight);
   const sky = createSky(scene, renderer);
 
   SEA.state = Number(params.get('sea') ?? tune.get('sea.state'));
@@ -51,7 +51,7 @@ async function boot() {
   // `?demo` shows the fixed phase 0 diorama for visual review; otherwise play.
   const world = params.has('demo')
     ? await buildDiorama(scene, board, hulls)
-    : await createController(scene, board, hulls);
+    : await createController(scene, board, hulls, controls);
   ocean.setIslands(world.islands);
 
   const post = createPost(renderer, scene, camera, camera.position.distanceTo(target));

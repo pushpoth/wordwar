@@ -41,7 +41,7 @@
 .hud .intel .empty { color: var(--hud-dim); font-size: 13px; margin-top: 6px; }
 
 /* Word progress + tried letters, bottom right */
-.hud .word { right: 16px; bottom: 16px; width: 330px; }
+.hud .word { right: 16px; bottom: 112px; width: 330px; }
 .hud .word .letters { font-size: 30px; font-weight: 700; letter-spacing: 0.32em; margin: 6px 0 10px; min-height: 38px; }
 .hud .word .letters b { font-weight: 700; }
 /* Radar hints: known letters that still need a torpedo. */
@@ -104,13 +104,17 @@
 .hud .menu button.primary { background: rgba(242, 179, 61, 0.16); border-color: rgba(242, 179, 61, 0.7); color: var(--hud-amber); }
 .hud .menu kbd { font: 500 11px var(--hud-font); color: var(--hud-dim); letter-spacing: 0.08em; }
 
-/* Pause button, top centre */
-.hud .pause-btn {
-  position: absolute; left: 50%; top: 16px; transform: translateX(-50%); pointer-events: auto; cursor: pointer;
-  width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--hud-edge); background: var(--hud-bg);
-  color: var(--hud-text); font: 600 13px var(--hud-font); backdrop-filter: blur(6px);
+/* Camera and menu buttons, bottom right */
+.hud .cam { right: 16px; bottom: 16px; display: flex; gap: 18px; align-items: flex-end; padding: 10px 16px; pointer-events: auto; }
+.hud .cam .group { display: grid; gap: 6px; justify-items: center; }
+.hud .cam .pair { display: flex; gap: 6px; }
+.hud .cam button {
+  width: 40px; height: 40px; border-radius: 8px; border: 1px solid var(--hud-edge); background: rgba(255, 255, 255, 0.06);
+  color: var(--hud-text); font: 600 18px var(--hud-font); cursor: pointer; touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
-.hud.menu-open .pause-btn { display: none; }
+.hud .cam button:hover { border-color: var(--hud-amber); }
+.hud.menu-open .cam { display: none; }
 
 /* Hidden until the loader finishes */
 .hud { opacity: 0; transition: opacity 0.4s; }
@@ -119,6 +123,7 @@
 @media (max-width: 760px) {
   .hud .intel, .hud .log { display: none; }
   .hud .word { left: 16px; right: 16px; width: auto; bottom: 92px; }
+  .hud .cam { right: 16px; bottom: 16px; }
   .hud .status { width: 180px; }
 }
 body.shot .hud { display: none; }

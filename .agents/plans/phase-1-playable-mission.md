@@ -48,7 +48,7 @@ and a screenshot at desktop and phone size:
    minus its engine event bus: colour keys from `HudView.tried`). Pointer-down
    fires, pulse on physical presses too, ⌫ omitted (no editing in this game).
    Use our own keys, never the native keyboard, which would cover the board.
-3. **Camera controls.** Extend `render/camera.ts` with zoom (distance, clamped) and
+3. ✅ **Camera controls.** Extend `render/camera.ts` with zoom (distance, clamped) and
    discrete rotate and tilt steps; add a Zoom −/+, Rotate, Menu panel as in the
    reference (Menu opens pause). Keyboard extras: `[` `]` rotate, `+` `-` zoom
    (never letters, which are game input).
