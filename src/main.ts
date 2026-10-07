@@ -2,6 +2,7 @@ import { Scene } from 'three/webgpu';
 import { createBoard } from './render/board';
 import { createHulls } from './render/hulls';
 import { SEA } from './render/waves';
+import { installGestures } from './game/gestures';
 import { createCamera, fitFov } from './render/camera';
 import { isPaused, pinnedTime, simTime, tickClock } from './render/clock';
 import { createOcean } from './render/ocean';
@@ -34,6 +35,7 @@ async function boot() {
   const scene = new Scene();
   const { camera, target, update: updateCamera, azimuth, onMove, controls } = createCamera(window.innerWidth / window.innerHeight);
   const sky = createSky(scene, renderer);
+  installGestures(renderer.domElement, (d) => controls.nudge(d.dAz, d.dEl, d.zoom));
 
   SEA.state = Number(params.get('sea') ?? tune.get('sea.state'));
   tune.on('sea.state', (v) => (SEA.state = v as number));

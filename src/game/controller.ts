@@ -205,6 +205,7 @@ export async function createController(scene: Scene, board: Board, hulls: Hulls,
       intel: discovered.map((id) => {
         const u = game.unit(id)!;
         return {
+          id,
           length: u.length,
           revealed: u.coords.map((_, i) => letterState(st, u, i)),
           sunk: u.destroyed,
@@ -357,6 +358,7 @@ export async function createController(scene: Scene, board: Board, hulls: Hulls,
     pause: () => pause(),
   };
   installKeyboard(intents, { menuKey: hud.menuKey, menuOpen: hud.isMenuOpen, ended: () => ended, onLetter: hud.flash });
+  hud.onSelect((id) => { if (!hud.isMenuOpen()) intents.selectTarget(id); });
   hud.onLetter((letter) => {
     if (!ended && !hud.isMenuOpen()) intents.letter(letter);
   });

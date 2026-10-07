@@ -52,7 +52,7 @@ and a screenshot at desktop and phone size:
    discrete rotate and tilt steps; add a Zoom −/+, Rotate, Menu panel as in the
    reference (Menu opens pause). Keyboard extras: `[` `]` rotate, `+` `-` zoom
    (never letters, which are game input).
-4. **Touch gestures.** Canvas pointer handling: one-finger drag orbits and tilts
+4. ✅ **Touch gestures.** Canvas pointer handling: one-finger drag orbits and tilts
    with the same easing as the arrow keys, two-finger pinch zooms; a tap that
    moves under ~8 px does nothing. `touch-action: none` on the canvas. Tap an
    intel row to select that target. Typemariner's one-shot 90° drag-rotate is

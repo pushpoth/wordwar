@@ -1,7 +1,7 @@
 import './hud.css';
 
 /** Letter states: 1 confirmed hit, 0.5 radar hint (still to be torpedoed), 0 unknown. */
-export type IntelRow = { length: number; revealed: number[]; sunk: boolean; active: boolean };
+export type IntelRow = { id: string; length: number; revealed: number[]; sunk: boolean; active: boolean };
 
 export type HudView = {
   mission: number;
@@ -59,6 +59,12 @@ export function createHud() {
   root.append(status, intel, word, log, mode, toast, scrim, menuEl, cam);
   document.body.appendChild(root);
 
+  let selectFn: (id: string) => void = () => {};
+  intel.querySelector('ul')!.addEventListener('click', (e) => {
+    const id = (e.target as HTMLElement).closest<HTMLElement>('li[data-id]')?.dataset.id;
+    if (id) selectFn(id);
+  });
+
   const keys = word.querySelector('.keys')!;
   const keyEls = new Map<string, HTMLElement>();
   let letterFn: (letter: string) => void = () => {};
@@ -106,7 +112,7 @@ export function createHud() {
 
     const ul = intel.querySelector('ul')!;
     ul.innerHTML = v.intel.map((r) => `
-      <li class="${r.active ? 'active' : ''} ${r.sunk ? 'sunk' : ''}">
+      <li data-id="${r.id}" class="${r.active ? 'active' : ''} ${r.sunk ? 'sunk' : ''}">
         <span>??? · ${r.length} LETTERS</span>
         <span class="boxes">${r.revealed.map((on) => `<i class="${on === 1 ? 'on' : on > 0 ? 'hint' : ''}"></i>`).join('')}</span>
       </li>`).join('');
@@ -174,6 +180,11 @@ export function createHud() {
     return menuActions.length > 0;
   }
 
+  /** A tap on a ship's row in the intel list. */
+  function onSelect(fn: (id: string) => void) {
+    selectFn = fn;
+  }
+
   function onLetter(fn: (letter: string) => void) {
     letterFn = fn;
   }
@@ -194,7 +205,7 @@ export function createHud() {
     root.classList.add('ready');
   }
 
-  return { render, note, banner, menu, menuKey, onPause, onCamera, onLetter, flash, ready, isMenuOpen: () => menuActions.length > 0 };
+  return { render, note, banner, menu, menuKey, onPause, onCamera, onLetter, onSelect, flash, ready, isMenuOpen: () => menuActions.length > 0 };
 }
 
 export type Hud = ReturnType<typeof createHud>;

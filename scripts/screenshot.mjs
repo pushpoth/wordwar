@@ -5,6 +5,7 @@
 //   npm run screenshot -- --query "view=close" --frames 90
 //   npm run screenshot -- --url https://<preview>.vercel.app
 //   npm run screenshot -- --hud --no-pin --keys "E,T,A,Tab" --key-frames 12   (play, then shoot)
+//   …--keys "drag:200:0"   (orbit by dragging the canvas)
 //   …--keys "tap:E,tap:A"   (tap on-screen keys; text of any HUD button)
 //   …--keys "E,A,Reload"   ("Reload" reloads the page, keeping its storage)
 //
@@ -89,7 +90,16 @@ try {
       await page.waitForFunction((n) => (window.__ww?.frames ?? 0) >= n, { timeout: timeoutMs, polling: 250 }, frames);
       continue;
     }
-    if (key.startsWith('tap:')) {
+    if (key.startsWith('drag:')) {
+      // Drag on the canvas from near the centre by dx:dy pixels (e.g. drag:200:0).
+      const [dx, dy] = key.slice(5).split(':').map(Number);
+      const x0 = page.viewport().width / 2;
+      const y0 = page.viewport().height / 2;
+      await page.mouse.move(x0, y0);
+      await page.mouse.down();
+      await page.mouse.move(x0 + dx, y0 + dy, { steps: 10 });
+      await page.mouse.up();
+    } else if (key.startsWith('tap:')) {
       // Tap an on-screen control by its text (a key, an intel row): a real pointer event at its centre.
       const label = key.slice(4);
       const box = await page.evaluate((t) => {

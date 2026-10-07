@@ -31,7 +31,8 @@
 /* Target intel, top right */
 .hud .intel { right: 16px; top: 16px; width: 250px; }
 .hud .intel ul { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 8px; }
-.hud .intel li { display: grid; grid-template-columns: auto auto; justify-content: space-between; white-space: nowrap; align-items: center; gap: 8px; opacity: 0.92; }
+.hud .intel ul { pointer-events: auto; }
+.hud .intel li { cursor: pointer; min-height: 24px; display: grid; grid-template-columns: auto auto; justify-content: space-between; white-space: nowrap; align-items: center; gap: 8px; opacity: 0.92; }
 .hud .intel li.active { color: var(--hud-amber); }
 .hud .intel li.sunk { opacity: 0.45; text-decoration: line-through; }
 .hud .intel .boxes { display: flex; gap: 3px; }
