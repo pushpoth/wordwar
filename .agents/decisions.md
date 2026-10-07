@@ -101,4 +101,4 @@ Append-only. Close an entry by changing its status; never delete one.
   docks at the bottom and `viewInset` shifts and widens the camera so the board sits in
   the free area above it. Drag orbits continuously; the 90° snap from Typemariner isn't ported.
 - **Why:** The native keyboard would cover the board and resize the viewport mid-battle;
-  a docked dock plus a framed board keeps every tile visible while typing.
+  a docked keyboard plus a framed board keeps every tile visible while typing.

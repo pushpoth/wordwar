@@ -6,7 +6,7 @@ Phase 1 slices 1 and 2 are on `phase-1-gameplay`; slice 3 (full HUD and touch)
 is built bar your device check. Slice 3 added: one input layer (`src/game/input.ts`), a
 tappable on-screen keyboard, zoom/rotate/menu buttons (`[ ] + -` keys too),
 drag-orbit and pinch gestures (`gestures.ts`), tap-to-select on intel rows, a sonar
-dial, and a phone layout (docked keyboard, folded intel, LOG toggle). Slice 2 added: save and
+dial, and a phone layout (docked keyboard, folded intel, LOG toggle, no sonar dial). Slice 2 added: save and
 restore (seed plus action log in local storage, replayed on load), a pause
 menu (Space, the ❚❚ button, or leaving the tab) built on a reusable menu card,
 a loading progress bar, the dev tuner (`?tune`), a phone quality tier
@@ -21,6 +21,10 @@ explosion, depth of field, bloom, grade, SMAA). Run `npm run dev` (port 5190),
 `npm run models` to rebuild assets, `npm run screenshot` for review shots
 (`--t` pins time; `--query` takes `view=close|ship`, `az=<deg>`, `el=<deg>`).
 In the browser, the arrow keys orbit and tilt the camera.
+
+Open for slice 3: pinch zoom and touch drag are unit-tested but untried on a real phone, as is
+the phone layout (checked only in headless Chromium at 844×390 and 390×844); a touch-only mission win
+wasn't automated. Tapping an intel row does nothing in radar mode, like Tab.
 
 Open from phase 0 (scheduled as phase 2, visual tuning):
 - **Frame rate:** WebGPU holds about 56 fps on the dev machine (target 60);

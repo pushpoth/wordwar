@@ -144,7 +144,7 @@
   .hud .intel li { min-height: 44px; }
 }
 
-/* Phones, either way up: a docked keyboard, folded intel, sonar and log behind LOG. */
+/* Phones, either way up: a docked keyboard, folded intel, the log behind LOG, no sonar dial. */
 .hud .aux-btn { display: none; }
 @media (max-width: 760px), (max-height: 520px) {
   .hud { --gx: max(8px, env(safe-area-inset-left)); --gy: max(8px, env(safe-area-inset-top)); --gr: max(8px, env(safe-area-inset-right)); --gb: max(8px, env(safe-area-inset-bottom)); }
@@ -188,11 +188,8 @@
 
   /* Sonar and log appear with the LOG button. */
   .hud .sonar, .hud .log { display: none; }
-  .hud.show-aux .sonar, .hud.show-aux .log { display: grid; }
   .hud.show-aux .log { display: block; }
-  .hud .sonar { left: var(--gx); bottom: calc(var(--gb) + 94px); }
-  .hud .log { left: var(--gx); bottom: calc(var(--gb) + 94px); width: 230px; font-size: 12px; line-height: 1.4; padding: 6px 10px; }
-  .hud.show-aux .sonar { bottom: calc(var(--gb) + 94px + 6.4em + 20px); }
+  .hud .log { left: var(--gx); bottom: calc(var(--gb) + 94px); width: 200px; font-size: 12px; line-height: 1.4; padding: 6px 10px; }
   .hud .aux-btn {
     display: block; position: absolute; left: var(--gx); bottom: calc(var(--gb) + 52px); pointer-events: auto; height: 36px; padding: 0 14px;
     border-radius: 8px; border: 1px solid var(--hud-edge); background: rgba(8, 18, 26, 0.8); color: var(--hud-dim);
@@ -209,6 +206,5 @@
   .hud .cam { bottom: calc(var(--dock) + 4px); }
   .hud .aux-btn { bottom: calc(var(--dock) + 4px); }
   .hud .log { bottom: calc(var(--dock) + 48px); }
-  .hud.show-aux .sonar { bottom: calc(var(--dock) + 48px + 6.4em + 20px); }
 }
 body.shot .hud { display: none; }

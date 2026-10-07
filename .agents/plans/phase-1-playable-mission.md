@@ -66,8 +66,8 @@ and a screenshot at desktop and phone size:
    insets; 44 px minimum touch targets; no page scroll or pinch-zoom of the
    page (`viewport` meta). Portrait needed no "rotate your device" hint: the
    board frames above the docked keyboard (`viewInset` in `render/camera.ts`).
-7. **Review pass.** Screenshots of every HUD state at 1536×1024 and a phone
-   size; check on a real phone; amend the plan with what the user reports.
+7. ✅ (screenshots) / open (real phone) **Review pass.** Screenshots at 1536×1024, 844×390 and 390×844 (done
+   2026-10-07; the phone sizes hide the sonar dial); check on a real phone (the user's); amend the plan with what the user reports.
 
 Exit tests: a mission can be won start to finish with touch only on a phone-size
 viewport; physical keyboard still works unchanged; the HUD never covers more than
