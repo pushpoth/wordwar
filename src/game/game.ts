@@ -4,7 +4,7 @@ import { eventBus } from '../engine/events';
 import { createMission, summary, tick } from '../engine/mission';
 import { fireRadar } from '../engine/radar';
 import { mulberry32 } from '../engine/rng';
-import { fireTorpedo, returnToRadar, switchTarget } from '../engine/torpedo';
+import { aimAt, fireTorpedo, returnToRadar, switchTarget } from '../engine/torpedo';
 import type { EngineEvent, MissionConfig, MissionState, Unit } from '../engine/types';
 import type { Action, Save } from './save';
 
@@ -52,10 +52,10 @@ export function createGame(config: MissionConfig, seed: number) {
       actions.push({ k: 'next', at: state.elapsedMs });
       state = switchTarget(state);
     },
-    /** Aim at a specific discovered ship (a tap on its intel row). */
+    /** Aim at a specific discovered ship (a tap on it), from either mode. */
     selectTarget: (id: string) => {
       actions.push({ k: 'select', id, at: state.elapsedMs });
-      state = switchTarget(state, id);
+      state = aimAt(state, id);
     },
     toRadar: () => {
       actions.push({ k: 'radar-mode', at: state.elapsedMs });

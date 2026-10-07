@@ -98,6 +98,7 @@ difficulty levels and map sizes (phases 4 and 5), progression (phase 6), audio.
    2026-10-07; runs alongside slice 3).
 8. ✅ Slice 3 refined (2026-10-07). Build its tasks 1–7 (above).
 
+# Amended: 2026-10-07 second HUD review: split keyboard on landscape, tap a ship to aim (engine `aimAt`), sonar and log hidden on all phones, logo on mission card and menus.
 # Amended: 2026-10-07 HUD trimmed after the user's review: intel card removed (tap-to-select with it), sonar range is a fixed "400m", phone landscape hides sonar and log, keyboard side toggle added. Touch still needs a way to switch target and return to radar.
 # Amended: 2026-10-07 slice 3 refined into seven tasks after reading Typemariner and the current HUD (no cell-tap; END TURN dropped).
 # Amended: 2026-10-07 slice 3 (full HUD, touch input) added to phase 1; sonar and torpedo effects moved to phase 3; roadmap in status.md renumbered to match.

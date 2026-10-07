@@ -39,4 +39,24 @@ describe('gestures', () => {
     g.move(9, 5, 5);
     expect(out).toHaveLength(0);
   });
+
+  it('reports a still press as a tap, but not a drag, a pinch or a cancel', () => {
+    const taps: number[][] = [];
+    const g = createGestures(() => {}, (x, y) => taps.push([x, y]));
+    g.down(1, 50, 60);
+    g.move(1, 53, 62);
+    g.up(1);
+    expect(taps).toEqual([[50, 60]]);
+    g.down(1, 0, 0);
+    g.move(1, 40, 0);
+    g.up(1);
+    g.down(1, 0, 0);
+    g.down(2, 100, 0);
+    g.up(2);
+    g.up(1);
+    g.down(1, 5, 5);
+    g.cancel(1);
+    g.up(1);
+    expect(taps).toHaveLength(1);
+  });
 });

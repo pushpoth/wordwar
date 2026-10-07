@@ -36,7 +36,6 @@ async function boot() {
   const scene = new Scene();
   const { camera, target, update: updateCamera, azimuth, onMove, controls } = createCamera(window.innerWidth / window.innerHeight);
   const sky = createSky(scene, renderer);
-  installGestures(renderer.domElement, (d) => controls.nudge(d.dAz, d.dEl, d.zoom));
 
   SEA.state = Number(params.get('sea') ?? tune.get('sea.state'));
   tune.on('sea.state', (v) => (SEA.state = v as number));
@@ -55,6 +54,7 @@ async function boot() {
   const world = params.has('demo')
     ? await buildDiorama(scene, board, hulls)
     : await createController(scene, board, hulls, controls);
+  installGestures(renderer.domElement, (d) => controls.nudge(d.dAz, d.dEl, d.zoom), (x, y) => 'tap' in world && world.tap(x, y));
   ocean.setIslands(world.islands);
 
   const post = createPost(renderer, scene, camera, camera.position.distanceTo(target));

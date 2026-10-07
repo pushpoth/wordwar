@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { fireTorpedo, switchTarget, returnToRadar } from './torpedo';
+import { aimAt, fireTorpedo, switchTarget, returnToRadar } from './torpedo';
 import type { MissionState, Unit, Tile } from './types';
 
 function createMockState(override: Partial<MissionState> = {}): MissionState {
@@ -495,6 +495,16 @@ describe('Torpedo Engine Logic', () => {
     });
     const stateRadarResult = switchTarget(stateRadar, 'unit-1');
     expect(stateRadarResult).toBe(stateRadar);
+  });
+
+  it('aimAt targets a discovered unit from radar mode, and ignores unknown ones', () => {
+    const radar = createMockState({ mode: 'RADAR', discoveredUnitsQueue: ['unit-1', 'unit-2'], activeUnitId: null });
+    const aimed = aimAt(radar, 'unit-2');
+    expect(aimed.mode).toBe('TORPEDO');
+    expect(aimed.activeUnitId).toBe('unit-2');
+    expect(aimAt(radar, 'unit-9')).toBe(radar);
+    // From torpedo mode it just switches.
+    expect(aimAt(aimed, 'unit-1').activeUnitId).toBe('unit-1');
   });
 
   it('should return to radar mode when returnToRadar is called', () => {

@@ -110,3 +110,12 @@ Append-only. Close an entry by changing its status; never delete one.
   dev-only. On landscape phones the keyboard is 60vw and can be moved to either bottom corner.
 - **Why:** The user's review: found ships already show their words on the map, and the list cost screen space.
   Consequence: touch has no way yet to switch target or return to radar.
+
+## 2026-10-07 · Split keyboard on landscape phones; tap a ship to aim; `aimAt` added to the engine
+- **Status:** active (replaces the keyboard side toggle)
+- **Decision:** On landscape phones the keyboard is split into two corner panels (Q–T/A–G/Z–B left, Y–P/H–L/N–M right)
+  so the board stays centre stage; the corner-toggle buttons are gone. A tap on a discovered ship aims at it:
+  the tap is ray-cast to the water and tested against each live hull's padded box. Because `switchTarget`
+  only works in torpedo mode (and the ported test pins that), a new engine function `aimAt` also enters torpedo
+  mode from radar. The mode card is 30% wider in portrait, where it wrapped; on desktop and landscape it already fits one line.
+- **Why:** The user's review of the first phone layout.

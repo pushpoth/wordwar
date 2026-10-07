@@ -7,6 +7,7 @@
 //   npm run screenshot -- --hud --no-pin --keys "E,T,A,Tab" --key-frames 12   (play, then shoot)
 //   --touch --w 844 --h 390   (emulate a phone: coarse pointer, mobile viewport)
 //   …--keys "drag:200:0"   (orbit by dragging the canvas)
+//   …--keys "tapxy:520:340"   (tap the canvas at a pixel, e.g. a ship)
 //   …--keys "tap:E,tap:A"   (tap on-screen keys; text of any HUD button)
 //   …--keys "E,A,Reload"   ("Reload" reloads the page, keeping its storage)
 //
@@ -100,6 +101,10 @@ try {
       await page.mouse.down();
       await page.mouse.move(x0 + dx, y0 + dy, { steps: 10 });
       await page.mouse.up();
+    } else if (key.startsWith('tapxy:')) {
+      // Tap the canvas at a pixel position (e.g. tapxy:520:340).
+      const [x, y] = key.slice(6).split(':').map(Number);
+      await page.mouse.click(x, y);
     } else if (key.startsWith('tap:')) {
       // Tap an on-screen control by its text (a key, an intel row): a real pointer event at its centre.
       const label = key.slice(4);

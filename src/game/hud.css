@@ -67,10 +67,13 @@
 /* Radar hints: known letters that still need a torpedo. */
 .hud .word .letters em { font-style: normal; color: var(--hud-amber); opacity: 0.55; }
 .hud .word .len { white-space: nowrap; }
-.hud .keys { display: grid; gap: 4px; }
-.hud .keys div { display: flex; justify-content: center; gap: 4px; }
+.hud .keys { display: flex; justify-content: center; }
+.hud .kb { display: grid; gap: 4px; align-content: start; }
+.hud .kl { flex: 13; }
+.hud .kr { flex: 10; }
+.hud .kb .row { display: grid; }
 .hud .keys .key {
-  flex: 0 0 26px; font: 500 13px var(--hud-font); color: var(--hud-text); text-align: center; padding: 5px 0;
+  height: 28px; margin: 0 2px; font: 500 13px var(--hud-font); color: var(--hud-text); text-align: center; padding: 0;
   border-radius: 4px; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.08);
   pointer-events: auto; cursor: pointer; touch-action: manipulation; user-select: none; -webkit-user-select: none;
   -webkit-tap-highlight-color: transparent;
@@ -81,7 +84,12 @@
 .hud .keys .key.pulse { animation: key-pulse 0.22s ease-out; }
 @keyframes key-pulse { 0% { background: rgba(242, 179, 61, 0.7); transform: scale(0.9); } 100% { transform: scale(1); } }
 .hud.menu-open .keys .key { pointer-events: none; }
-.hud .kb-side { display: none; }
+
+/* Logo: as on the loading screen */
+.hud .logo { font-size: 13px; font-weight: 700; letter-spacing: 0.32em; white-space: nowrap; }
+.hud .logo span { color: var(--hud-amber); }
+.hud .status .logo { margin-bottom: -2px; }
+.hud .menu .logo { font-size: 17px; margin-bottom: 12px; }
 
 /* Sonar log, bottom left */
 .hud .log { left: 16px; bottom: 16px; width: 300px; font-size: 13px; line-height: 1.55; }
@@ -134,8 +142,8 @@
 /* Touch screens: bigger targets wherever the layout stays the desktop one. */
 @media (pointer: coarse) {
   .hud .word { width: 460px; }
-  .hud .keys .key { flex: 0 0 40px; height: 44px; font-size: 16px; padding: 0; }
-  .hud .keys { gap: 6px; }
+  .hud .keys .key { height: 44px; font-size: 16px; }
+  .hud .kb { gap: 6px; }
   .hud .cam button, .hud .menu-btn { height: 44px; }
 }
 
@@ -158,40 +166,33 @@
   .hud .word { padding: 6px 8px; }
   .hud .word .head { margin: 0 0 4px; }
   .hud .word .letters { font-size: 20px; min-height: 24px; line-height: 24px; }
-  .hud .keys { gap: 4px; }
-  .hud .keys div { gap: 4px; }
-  .hud .keys .key { flex: 1 1 0; max-width: 52px; height: 38px; font-size: 16px; padding: 0; }
-  .hud .log { left: var(--gx); width: 200px; font-size: 12px; line-height: 1.4; padding: 6px 10px; display: none; }
-  .hud.show-aux .log { display: block; }
-  .hud .aux-btn {
-    display: block; position: absolute; left: var(--gx); pointer-events: auto; height: 36px; padding: 0 14px;
-    border-radius: 8px; border: 1px solid var(--hud-edge); background: rgba(8, 18, 26, 0.8); color: var(--hud-dim);
-    font: 600 12px var(--hud-font); letter-spacing: 0.14em; cursor: pointer;
-  }
-  .hud.menu-open .aux-btn { display: none; }
+  .hud .keys .key { height: 38px; font-size: 16px; }
+  /* The sonar dial, the log and its LOG button are hidden on phones for now. */
+  .hud .sonar, .hud .log, .hud .aux-btn { display: none !important; }
 }
 
-/* Landscape phone: no sonar, no log; the keyboard takes 60% of the width and can sit in either bottom corner. */
+/* Landscape phone: a split keyboard (half the keys in each bottom corner) leaves the board centre stage. */
 @media (max-height: 520px) and (orientation: landscape) {
-  .hud .sonar, .hud .log, .hud .aux-btn { display: none !important; }
-  .hud .word { right: var(--gr); bottom: var(--gb); width: 60vw; }
-  .hud.kb-left .word { right: auto; left: var(--gx); }
-  .hud .kb-side {
-    display: block; position: absolute; bottom: 0; width: 30px; height: 36px; padding: 0; pointer-events: auto; cursor: pointer;
-    border-radius: 8px; border: 1px solid var(--hud-edge); background: rgba(8, 18, 26, 0.8); color: var(--hud-dim); font-size: 13px;
+  .hud { --u: clamp(30px, 5vw, 44px); }
+  .hud .word, .hud .keys { display: contents; }
+  .hud .kb {
+    position: absolute; bottom: var(--gb); padding: 6px 8px; pointer-events: auto; gap: 4px;
+    background: rgba(8, 18, 26, 0.8); border: 1px solid var(--hud-edge); border-radius: 8px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
   }
-  .hud .kb-side.to-left { left: -36px; }
-  .hud .kb-side.to-right { right: -36px; display: none; }
-  .hud.kb-left .kb-side.to-left { display: none; }
-  .hud.kb-left .kb-side.to-right { display: block; }
+  .hud .kl { left: var(--gx); width: calc(6.5 * var(--u) + 16px); }
+  .hud .kr { right: var(--gr); width: calc(5 * var(--u) + 16px); }
+  .hud .word .head {
+    position: absolute; left: 50%; transform: translateX(-50%); bottom: var(--gb); margin: 0; padding: 4px 14px; gap: 14px;
+    background: rgba(8, 18, 26, 0.8); border: 1px solid var(--hud-edge); border-radius: 8px;
+  }
+  .hud.menu-open .kb, .hud.menu-open .word .head { display: none; }
 }
 
 /* Portrait phone: keyboard across the full width at the bottom edge, mode card on top of it. */
 @media (max-width: 760px) and (orientation: portrait) {
   .hud .word { left: 0; right: 0; bottom: 0; width: auto; border-radius: 10px 10px 0 0; border-bottom: 0; padding: 8px 8px calc(var(--gb) + 2px); }
-  .hud .keys .key { max-width: none; height: 44px; }
-  .hud .mode { top: auto; bottom: calc(var(--dock) + 6px); }
-  .hud .aux-btn { bottom: calc(var(--dock) + 98px); }
-  .hud .log { bottom: calc(var(--dock) + 140px); }
+  .hud .keys .key { height: 44px; }
+  .hud .mode { top: auto; bottom: calc(var(--dock) + 6px); width: 65vw; max-width: none; }
 }
 body.shot .hud { display: none; }

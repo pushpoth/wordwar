@@ -355,6 +355,21 @@ export function switchTarget(state: MissionState, unitId?: UnitId): MissionState
   return nextState;
 }
 
+/**
+ * Aim at a discovered unit from either mode: in TORPEDO mode it behaves like
+ * `switchTarget(state, unitId)`; from RADAR it also enters TORPEDO mode.
+ * (Word War: a tap on a visible enemy ship.)
+ */
+export function aimAt(state: MissionState, unitId: UnitId): MissionState {
+  if (state.mode === 'TORPEDO') return switchTarget(state, unitId);
+  if (state.outcome !== 'in_progress' || !state.discoveredUnitsQueue.includes(unitId)) return state;
+  const nextState = cloneMissionState(state);
+  nextState.mode = 'TORPEDO';
+  nextState.activeUnitId = unitId;
+  eventBus.emit({ type: 'mode:changed', mode: 'TORPEDO', activeUnitId: unitId });
+  return nextState;
+}
+
 export function returnToRadar(state: MissionState): MissionState {
   if (state.outcome !== 'in_progress') {
     console.warn(`returnToRadar: invalid outcome. outcome=${state.outcome}`);

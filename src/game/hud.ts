@@ -26,7 +26,17 @@ export type MenuView = {
   actions: MenuAction[];
 };
 
-const KEY_ROWS = ['QWERTYUIOP', 'ASDFGHJKL', 'ZXCVBNM'];
+/**
+ * QWERTY split in two like a tablet's split keyboard. Each half is a grid of
+ * half-key columns; a row starts at a column so the stagger matches a real keyboard.
+ */
+const KEY_HALVES = [
+  { cls: 'kl', cols: 13, rows: [['QWERT', 1], ['ASDFG', 2], ['ZXCVB', 4]] },
+  { cls: 'kr', cols: 10, rows: [['YUIOP', 1], ['HJKL', 2], ['NM', 4]] },
+] as const;
+
+/** The brand mark, as on the loading screen. */
+const LOGO = '<div class="logo">WORD <span>WAR</span></div>';
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls = '', html = '') {
   const e = document.createElement(tag);
@@ -41,9 +51,7 @@ export function createHud() {
   const status = el('div', 'panel status');
   const word = el('div', 'panel word', `
     <div class="head"><div class="letters"></div><div class="len label"></div></div>
-    <div class="keys"></div>
-    <button type="button" class="kb-side to-left" aria-label="Move the keyboard to the left">◀</button>
-    <button type="button" class="kb-side to-right" aria-label="Move the keyboard to the right">▶</button>`);
+    <div class="keys"></div>`);
   const log = el('div', 'panel log');
   const mode = el('div', 'panel mode', '<div class="value"></div><div class="hint"></div>');
   const toast = el('div', 'panel toast', '<div><div class="value"></div><div class="sub"></div></div>');
@@ -80,36 +88,32 @@ export function createHud() {
   root.append(status, word, side, log, mode, toast, scrim, menuEl, auxBtn);
   document.body.appendChild(root);
 
-  // Landscape phones: the keyboard can sit in either bottom corner.
-  const SIDE_KEY = 'wordwar.keyboardSide';
-  const setSide = (left: boolean) => {
-    root.classList.toggle('kb-left', left);
-    try { localStorage.setItem(SIDE_KEY, left ? 'left' : 'right'); } catch { /* not remembered */ }
-  };
-  try { root.classList.toggle('kb-left', localStorage.getItem(SIDE_KEY) === 'left'); } catch { /* default right */ }
-  word.querySelector('.to-left')!.addEventListener('click', () => setSide(true));
-  word.querySelector('.to-right')!.addEventListener('click', () => setSide(false));
-
   const keys = word.querySelector('.keys')!;
   const keyEls = new Map<string, HTMLElement>();
   let letterFn: (letter: string) => void = () => {};
-  for (const row of KEY_ROWS) {
-    const r = el('div');
-    for (const k of row) {
-      const b = el('button', 'key', k);
-      b.type = 'button';
-      b.setAttribute('aria-label', `Letter ${k}`);
-      // Pointer-down fires at once (a click waits for release); keep focus off the key
-      // so Space and Enter can't re-press it.
-      b.addEventListener('pointerdown', (e) => {
-        e.preventDefault();
-        letterFn(k);
-        flash(k);
+  for (const half of KEY_HALVES) {
+    const block = el('div', `kb ${half.cls}`);
+    for (const [letters, start] of half.rows) {
+      const r = el('div', 'row');
+      r.style.gridTemplateColumns = `repeat(${half.cols}, 1fr)`;
+      [...letters].forEach((k, i) => {
+        const b = el('button', 'key', k);
+        b.type = 'button';
+        b.style.gridColumn = `${start + i * 2} / span 2`;
+        b.setAttribute('aria-label', `Letter ${k}`);
+        // Pointer-down fires at once (a click waits for release); keep focus off the key
+        // so Space and Enter can't re-press it.
+        b.addEventListener('pointerdown', (e) => {
+          e.preventDefault();
+          letterFn(k);
+          flash(k);
+        });
+        r.appendChild(b);
+        keyEls.set(k, b);
       });
-      r.appendChild(b);
-      keyEls.set(k, b);
+      block.appendChild(r);
     }
-    keys.appendChild(r);
+    keys.appendChild(block);
   }
 
   /** Pulse a key, for presses on the physical keyboard as well as taps. */
@@ -128,6 +132,7 @@ export function createHud() {
     const pct = Math.round((v.battery / v.batteryMax) * 100);
     const tpct = Math.round((v.torpedoes / v.torpedoMax) * 100);
     status.innerHTML = `
+      ${LOGO}
       <div class="title"><span class="value">MISSION ${String(v.mission).padStart(2, '0')}</span></div>
       <div class="label brief">Sink all enemy units</div>
       <div class="meter"><div class="row"><span class="label">Score</span><span class="value">${v.score}</span></div></div>
@@ -178,6 +183,7 @@ export function createHud() {
     if (!v) return;
     menuEl.className = `panel menu ${v.tone ?? 'neutral'}`;
     menuEl.innerHTML = `
+      ${LOGO}
       <h2>${v.title}</h2>
       ${v.subtitle ? `<div class="label">${v.subtitle}</div>` : ''}
       ${v.stats ? `<dl>${v.stats.map(([k, val]) => `<dt>${k}</dt><dd>${val}</dd>`).join('')}</dl>` : ''}
@@ -200,7 +206,7 @@ export function createHud() {
   }
 
   /**
-   * On phones the keyboard is docked at the bottom: report the height the
+   * On a portrait phone the keyboard is docked at the bottom: report the height the
    * camera should keep clear (0 on desktop) so the board is framed above it,
    * and expose the keyboard's height to CSS as --dock for the controls above it.
    */
@@ -208,10 +214,12 @@ export function createHud() {
     const compact = window.matchMedia('(max-width: 760px) and (orientation: portrait), (max-height: 520px) and (orientation: landscape)');
     const portrait = window.matchMedia('(max-width: 760px) and (orientation: portrait)');
     const measure = () => {
-      const dock = compact.matches ? Math.ceil(window.innerHeight - word.getBoundingClientRect().top) + 4 : 0;
+      // Only the portrait keyboard is a dock; the landscape halves sit in the corners.
+      const docked = compact.matches && portrait.matches;
+      const dock = docked ? Math.ceil(window.innerHeight - word.getBoundingClientRect().top) + 4 : 0;
       document.documentElement.style.setProperty('--dock', `${dock}px`);
       // In portrait the mode card sits on top of the keyboard.
-      fn(dock + (compact.matches && portrait.matches ? mode.offsetHeight + 8 : 0));
+      fn(docked ? dock + mode.offsetHeight + 8 : 0);
     };
     const ro = new ResizeObserver(measure);
     ro.observe(word);

@@ -1,4 +1,4 @@
-import { Group, type Camera, type Scene } from 'three/webgpu';
+import { Group, Plane, Raycaster, Vector2, Vector3, type Camera, type Scene } from 'three/webgpu';
 import { BATTERY_MAX } from '../config/balance';
 import type { EngineEvent, MissionState, Unit } from '../engine/types';
 import { loadModel, preloadModels } from '../render/assets';
@@ -71,6 +71,19 @@ export async function createController(scene: Scene, board: Board, hulls: Hulls,
   let pingStart = -99;
   let torpStart = -99;
   let ended = false;
+  let lastCamera: Camera | null = null;
+  const ray = new Raycaster();
+  const water = new Plane(new Vector3(0, 1, 0), 0);
+  const hit = new Vector3();
+
+  /** A tap on the canvas: if it lands on a discovered enemy ship, aim at it. */
+  function tap(clientX: number, clientY: number) {
+    if (!lastCamera || ended || isPaused() || hud.isMenuOpen()) return;
+    ray.setFromCamera(new Vector2((clientX / innerWidth) * 2 - 1, -(clientY / innerHeight) * 2 + 1), lastCamera);
+    if (!ray.ray.intersectPlane(water, hit)) return;
+    const id = fleet.pick(hit.x, hit.z);
+    if (id) intents.selectTarget(id);
+  }
 
   const later = (delay: number, run: () => void) => queue.push({ at: now + delay, run });
 
@@ -339,7 +352,7 @@ export async function createController(scene: Scene, board: Board, hulls: Hulls,
       refresh();
     },
     selectTarget: (id) => {
-      if (ended || game.state.mode !== 'TORPEDO' || id === game.state.activeUnitId) return;
+      if (ended || (game.state.mode === 'TORPEDO' && id === game.state.activeUnitId)) return;
       game.selectTarget(id);
       refresh();
     },
@@ -359,6 +372,7 @@ export async function createController(scene: Scene, board: Board, hulls: Hulls,
   let lastBattery = -1;
   function update(t: number, dt: number, camera: Camera, azimuthDeg: number) {
     now = t;
+    lastCamera = camera;
     // While paused the game clock stands still, but everything is still posed
     // at the frozen time (a restored mission pauses before its first frame).
     if (!isPaused()) {
@@ -411,6 +425,7 @@ export async function createController(scene: Scene, board: Board, hulls: Hulls,
 
   return {
     update,
+    tap,
     islands: scenery.islands as IslandShore[],
     /** Show every effect once so the renderer compiles it before play starts. */
     warmUp: fleet.warmUp,

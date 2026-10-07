@@ -9,7 +9,9 @@ drag-orbit and pinch gestures (`gestures.ts`), a sonar
 dial, and a phone layout. HUD trim (2026-10-07): no intel card (word progress and "N letters" sit
 in the keyboard card), Menu button over a camera-and-sonar card at top right, mode card top centre
 (above the keyboard in portrait), fps readout dev-only beside the mission card, seed hidden. Landscape
-phones hide sonar and log and let the keyboard sit in either bottom corner (◀ ▶, remembered). Slice 2 added: save and
+phones get a split keyboard (half the keys in each bottom corner, word progress in a pill at the bottom
+centre); phones hide the sonar, the log and its LOG button for now. Tapping a discovered ship aims at it
+(from radar mode too, via the new engine `aimAt`). The Word War logo heads the mission card and menus. Slice 2 added: save and
 restore (seed plus action log in local storage, replayed on load), a pause
 menu (Space, the ❚❚ button, or leaving the tab) built on a reusable menu card,
 a loading progress bar, the dev tuner (`?tune`), a phone quality tier
@@ -27,8 +29,7 @@ In the browser, the arrow keys orbit and tilt the camera.
 
 Open for slice 3: pinch zoom and touch drag are unit-tested but untried on a real phone, as is
 the phone layout (checked only in headless Chromium at 844×390 and 390×844); a touch-only mission win
-wasn't automated. **Touch can't switch target or return to radar** (Tab and Esc are keyboard-only) since the intel rows went:
-needs a touch control.
+wasn't automated. **Touch can't return to radar** (Esc is keyboard-only): needs a touch control. Tapping a ship switches target.
 
 Open from phase 0 (scheduled as phase 2, visual tuning):
 - **Frame rate:** WebGPU holds about 56 fps on the dev machine (target 60);

@@ -138,8 +138,29 @@ export function createFleet(root: Group, board: Board) {
     busy.clear();
   }
 
+  /**
+   * The live ship under a point on the water (world x, z), if any. The hull
+   * box is padded so a fingertip can hit a ship; the nearest centre wins.
+   */
+  function pick(x: number, z: number, pad = 0.55): string | null {
+    let best: string | null = null;
+    let bestD = Infinity;
+    for (const [id, ship] of ships) {
+      const f = ship.floater;
+      if (!f?.hull || ship.killedAt !== undefined) continue;
+      const dx = x - f.x;
+      const dz = z - f.z;
+      const along = dx * Math.cos(f.yaw) - dz * Math.sin(f.yaw);
+      const across = dx * Math.sin(f.yaw) + dz * Math.cos(f.yaw);
+      if (Math.abs(along) > f.hull.halfLength + pad || Math.abs(across) > f.hull.halfBeam + pad) continue;
+      const d = Math.hypot(dx, dz);
+      if (d < bestD) { bestD = d; best = id; }
+    }
+    return best;
+  }
+
   return {
-    spawn, kill, update, clear,
+    spawn, kill, update, clear, pick,
     /** Make the pooled explosions visible (at a live age) for shader warm-up. */
     warmUp: () => {
       for (const b of pool) {
