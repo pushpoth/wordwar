@@ -43,7 +43,7 @@ and a screenshot at desktop and phone size:
    with one intent API (`letter`, `nextTarget`, `selectTarget(id)`, `toRadar`,
    `pause`) that keyboard, on-screen keys and taps all call. Engine
    `switchTarget` already takes a unit id. Tested with stubs.
-2. **On-screen keyboard.** Replace the static key grid in the word panel with
+2. ✅ **On-screen keyboard.** Replace the static key grid in the word panel with
    buttons (port the layout from `../typemariner/src/ui/virtual-keyboard.ts`,
    minus its engine event bus: colour keys from `HudView.tried`). Pointer-down
    fires, pulse on physical presses too, ⌫ omitted (no editing in this game).

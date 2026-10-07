@@ -5,6 +5,7 @@
 //   npm run screenshot -- --query "view=close" --frames 90
 //   npm run screenshot -- --url https://<preview>.vercel.app
 //   npm run screenshot -- --hud --no-pin --keys "E,T,A,Tab" --key-frames 12   (play, then shoot)
+//   …--keys "tap:E,tap:A"   (tap on-screen keys; text of any HUD button)
 //   …--keys "E,A,Reload"   ("Reload" reloads the page, keeping its storage)
 //
 // Boots the Vite dev server in-process and drives the page with the headless
@@ -88,7 +89,17 @@ try {
       await page.waitForFunction((n) => (window.__ww?.frames ?? 0) >= n, { timeout: timeoutMs, polling: 250 }, frames);
       continue;
     }
-    await page.keyboard.press(key.length === 1 ? key.toUpperCase() : key);
+    if (key.startsWith('tap:')) {
+      // Tap an on-screen control by its text (a key, an intel row): a real pointer event at its centre.
+      const label = key.slice(4);
+      const box = await page.evaluate((t) => {
+        const e = [...document.querySelectorAll('.hud button, .hud li')].find((n) => n.textContent.trim() === t);
+        const r = e?.getBoundingClientRect();
+        return r ? { x: r.x + r.width / 2, y: r.y + r.height / 2 } : null;
+      }, label);
+      if (!box) throw new Error(`nothing to tap with text "${label}"`);
+      await page.mouse.click(box.x, box.y);
+    } else await page.keyboard.press(key.length === 1 ? key.toUpperCase() : key);
     const target = (await page.evaluate(() => window.__ww?.frames ?? 0)) + keyFrames;
     await page.waitForFunction((n) => (window.__ww?.frames ?? 0) >= n, { timeout: timeoutMs, polling: 200 }, target);
   }

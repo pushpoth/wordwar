@@ -48,13 +48,18 @@
 .hud .word .letters em { font-style: normal; color: var(--hud-amber); opacity: 0.55; }
 .hud .keys { display: grid; gap: 4px; }
 .hud .keys div { display: flex; justify-content: center; gap: 4px; }
-.hud .keys span { flex: 0 0 26px; }
-.hud .keys span {
-  font-size: 13px; text-align: center; padding: 5px 0; border-radius: 4px;
-  background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.08);
+.hud .keys .key {
+  flex: 0 0 26px; font: 500 13px var(--hud-font); color: var(--hud-text); text-align: center; padding: 5px 0;
+  border-radius: 4px; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.08);
+  pointer-events: auto; cursor: pointer; touch-action: manipulation; user-select: none; -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
-.hud .keys span.hit { background: rgba(95, 224, 122, 0.28); border-color: rgba(95, 224, 122, 0.6); }
-.hud .keys span.miss { opacity: 0.32; }
+.hud .keys .key:hover { border-color: rgba(255, 255, 255, 0.3); }
+.hud .keys .key.hit { background: rgba(95, 224, 122, 0.28); border-color: rgba(95, 224, 122, 0.6); }
+.hud .keys .key.miss { opacity: 0.32; }
+.hud .keys .key.pulse { animation: key-pulse 0.22s ease-out; }
+@keyframes key-pulse { 0% { background: rgba(242, 179, 61, 0.7); transform: scale(0.9); } 100% { transform: scale(1); } }
+.hud.menu-open .keys .key { pointer-events: none; }
 
 /* Sonar log, bottom left */
 .hud .log { left: 16px; bottom: 16px; width: 300px; font-size: 13px; line-height: 1.55; }

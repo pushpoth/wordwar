@@ -354,7 +354,10 @@ export async function createController(scene: Scene, board: Board, hulls: Hulls)
     },
     pause: () => pause(),
   };
-  installKeyboard(intents, { menuKey: hud.menuKey, menuOpen: hud.isMenuOpen, ended: () => ended });
+  installKeyboard(intents, { menuKey: hud.menuKey, menuOpen: hud.isMenuOpen, ended: () => ended, onLetter: hud.flash });
+  hud.onLetter((letter) => {
+    if (!ended && !hud.isMenuOpen()) intents.letter(letter);
+  });
 
   // ---- Frame -----------------------------------------------------------------
 

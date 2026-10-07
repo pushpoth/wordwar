@@ -58,14 +58,33 @@ export function createHud() {
 
   const keys = word.querySelector('.keys')!;
   const keyEls = new Map<string, HTMLElement>();
+  let letterFn: (letter: string) => void = () => {};
   for (const row of KEY_ROWS) {
     const r = el('div');
     for (const k of row) {
-      const s = el('span', '', k);
-      r.appendChild(s);
-      keyEls.set(k, s);
+      const b = el('button', 'key', k);
+      b.type = 'button';
+      b.setAttribute('aria-label', `Letter ${k}`);
+      // Pointer-down fires at once (a click waits for release); keep focus off the key
+      // so Space and Enter can't re-press it.
+      b.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        letterFn(k);
+        flash(k);
+      });
+      r.appendChild(b);
+      keyEls.set(k, b);
     }
     keys.appendChild(r);
+  }
+
+  /** Pulse a key, for presses on the physical keyboard as well as taps. */
+  function flash(letter: string) {
+    const e = keyEls.get(letter);
+    if (!e) return;
+    e.classList.remove('pulse');
+    void e.offsetWidth;
+    e.classList.add('pulse');
   }
 
   const lines: string[] = [];
@@ -95,7 +114,8 @@ export function createHud() {
       : '—';
     for (const [k, e] of keyEls) {
       const t = v.tried.get(k);
-      e.className = t === undefined ? '' : t ? 'hit' : 'miss';
+      e.classList.toggle('hit', t === true);
+      e.classList.toggle('miss', t === false);
     }
 
     mode.className = `panel mode ${v.mode === 'TORPEDO' ? 'torpedo' : 'radar'}`;
@@ -151,6 +171,10 @@ export function createHud() {
     return menuActions.length > 0;
   }
 
+  function onLetter(fn: (letter: string) => void) {
+    letterFn = fn;
+  }
+
   function onPause(fn: () => void) {
     pauseBtn.addEventListener('click', fn);
   }
@@ -160,7 +184,7 @@ export function createHud() {
     root.classList.add('ready');
   }
 
-  return { render, note, banner, menu, menuKey, onPause, ready, isMenuOpen: () => menuActions.length > 0 };
+  return { render, note, banner, menu, menuKey, onPause, onLetter, flash, ready, isMenuOpen: () => menuActions.length > 0 };
 }
 
 export type Hud = ReturnType<typeof createHud>;
