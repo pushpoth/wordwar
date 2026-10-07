@@ -22,6 +22,19 @@ export function createLoader() {
     creep = window.setInterval(() => set(shown + (ceiling - shown) * 0.08), 120);
   }
 
+  // Browsers pause animation frames (and WebGL shader compilation, which polls
+  // on them) in a background tab, so loading waits until the tab is visible again.
+  let before = '';
+  document.addEventListener('visibilitychange', () => {
+    if (!label || !el?.isConnected || el.classList.contains('done')) return;
+    if (document.hidden) {
+      before = label.textContent ?? '';
+      label.textContent = 'Paused: loading continues when this tab is in view';
+    } else if (before) {
+      label.textContent = before;
+    }
+  });
+
   function done() {
     clearInterval(creep);
     set(1);

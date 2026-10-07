@@ -37,6 +37,14 @@
       #loader .stage { margin-top: 12px; font-size: 12px; letter-spacing: 0.14em; color: #8ea6b4; text-transform: uppercase; }
       #boot-error { position: fixed; inset: 0; display: grid; place-items: center; color: #ffb4a8; font: 15px system-ui; padding: 16px; text-align: center; }
     </style>
+    <!-- Start the model downloads alongside the script, not after it has run. -->
+    <link rel="preload" as="fetch" href="/models/destroyer.glb" crossorigin />
+    <link rel="preload" as="fetch" href="/models/submarine.glb" crossorigin />
+    <link rel="preload" as="fetch" href="/models/island_lighthouse.glb" crossorigin />
+    <link rel="preload" as="fetch" href="/models/island_wooded.glb" crossorigin />
+    <link rel="preload" as="fetch" href="/models/island_rock.glb" crossorigin />
+    <link rel="preload" as="fetch" href="/models/buoy.glb" crossorigin />
+    <link rel="preload" as="fetch" href="/models/destroyer_wreck.glb" crossorigin />
   </head>
   <body>
     <div id="loader"><div class="box">

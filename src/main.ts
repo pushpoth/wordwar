@@ -18,7 +18,7 @@ import { createLoader } from './ui/loader';
 
 declare global {
   interface Window {
-    __ww?: { backend: string; frames: number; fps: number };
+    __ww?: { backend: string; frames: number; fps: number; load?: Record<string, number> };
   }
 }
 
@@ -30,8 +30,18 @@ async function boot() {
   if (params.has('shot')) document.body.classList.add('shot');
 
   const loader = createLoader();
+  // Where the load time goes, for the dev readout: ms since the page started.
+  const marks: Record<string, number> = {};
+  const mark = (name: string) => { marks[name] = Math.round(performance.now()); };
+
+  // Start fetching models now, in parallel with starting the renderer.
+  const models = ['island_lighthouse', 'island_wooded', 'island_rock', 'buoy', 'submarine', 'destroyer', 'destroyer_wreck'];
+  let loaded = 0;
+  const modelsReady = preloadModels(models, () => loader.set(0.2 + (0.45 * ++loaded) / models.length, 'Building the fleet'));
+
   loader.set(0.04, 'Starting the renderer');
   const { renderer, backend } = await createRenderer(stage);
+  mark('renderer');
   loader.set(0.12, 'Lighting the sky');
   const scene = new Scene();
   const { camera, target, update: updateCamera, azimuth, onMove, controls } = createCamera(window.innerWidth / window.innerHeight);
@@ -45,15 +55,15 @@ async function boot() {
   scene.add(ocean.mesh);
 
   // Models: the bar advances as each one arrives.
-  const models = ['island_lighthouse', 'island_wooded', 'island_rock', 'buoy', 'submarine', 'destroyer', 'destroyer_wreck'];
-  let loaded = 0;
-  await preloadModels(models, () => loader.set(0.2 + (0.45 * ++loaded) / models.length, 'Building the fleet'));
+  await modelsReady;
+  mark('models');
   loader.set(0.68, 'Placing the fleet');
 
   // `?demo` shows the fixed phase 0 diorama for visual review; otherwise play.
   const world = params.has('demo')
     ? await buildDiorama(scene, board, hulls)
     : await createController(scene, board, hulls, controls);
+  mark('world');
   installGestures(renderer.domElement, (d) => controls.nudge(d.dAz, d.dEl, d.zoom), (x, y) => 'tap' in world && world.tap(x, y));
   ocean.setIslands(world.islands);
 
@@ -68,6 +78,7 @@ async function boot() {
   if ('warmUp' in world) {
     const restore = world.warmUp();
     await renderer.compileAsync(scene, camera);
+    mark('shaders');
     restore();
     world.warmDone();
   }
@@ -77,7 +88,7 @@ async function boot() {
     fitFov(camera, window.innerWidth / window.innerHeight);
   });
 
-  const state = { backend, frames: 0, fps: 0 };
+  const state: NonNullable<Window['__ww']> = { backend, frames: 0, fps: 0 };
   window.__ww = state;
   let acc = 0;
   let accFrames = 0;
@@ -103,6 +114,8 @@ async function boot() {
     if (ratio !== null) renderer.setPixelRatio(ratio);
 
     if (state.frames === 1) {
+      mark('firstFrame');
+      state.load = marks;
       loader.done();
       if ('ready' in world) world.ready();
       if (TUNER_ENABLED && !params.has('shot')) {
@@ -121,7 +134,8 @@ async function boot() {
       statsEl.textContent =
         `${backend.toUpperCase()}  ${state.fps.toFixed(0)} fps\n` +
         `${renderer.domElement.width}×${renderer.domElement.height} @${renderer.getPixelRatio().toFixed(2)}  ${info.drawCalls} draws  ${(info.triangles / 1000).toFixed(0)}k tris` +
-        (pinnedTime === null ? '\n← → spin   ↑ ↓ tilt' : `\nt pinned ${pinnedTime}s`);
+        (pinnedTime === null ? '\n← → spin   ↑ ↓ tilt' : `\nt pinned ${pinnedTime}s`) +
+        (marks.firstFrame ? `\nload ${(marks.firstFrame / 1000).toFixed(1)}s: gpu ${marks.renderer} models ${marks.models} world ${marks.world} shaders ${marks.shaders} 1st ${marks.firstFrame} ms` : '');
     }
   });
 }
