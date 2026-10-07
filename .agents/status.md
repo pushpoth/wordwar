@@ -78,9 +78,11 @@ Open from phase 0 (scheduled as phase 2, visual and performance pass):
 
 ## Active plan
 
-[Campaign build](plans/campaign-build.md): phases 4–6 as one plan, in slices —
-level catalog, progress and mission select first; then map sizes, difficulty
-and balance. Phase 1's plan is archived (the game plays end to end on a Mac and
+[Campaign build](plans/campaign-build.md): phases 4–6 as one plan, in slices. Slice 1 is built
+(2026-10-07): eight 10×10 levels (`src/config/campaign.ts`), stars from torpedoes used, unlocks and best scores
+saved in local storage (`wordwar.progress.v1`), a mission-select card (first load, pause menu, end card), ship
+classes by word length that all reuse the destroyer model (`src/config/ships.ts`), and a balance bot
+(`npm run balance`). `?level=N` opens a level directly. Next: map sizes (slice 2), then difficulty and polish. Phase 1's plan is archived (the game plays end to end on a Mac and
 an iPhone at 60 fps).
 
 ## Roadmap

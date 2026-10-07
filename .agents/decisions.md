@@ -119,3 +119,19 @@ Append-only. Close an entry by changing its status; never delete one.
   only works in torpedo mode (and the ported test pins that), a new engine function `aimAt` also enters torpedo
   mode from radar. The mode card is 30% wider in portrait, where it wrapped; on desktop and landscape it already fits one line.
 - **Why:** The user's review of the first phone layout.
+
+## 2026-10-07 · Stars from torpedoes used; ladder budgets fitted with a bot, then padded for people
+- **Status:** active
+- **Decision:** A win earns 1 star, 2 or 3 if it used at most `starUse[0]` / `starUse[1]` of the level's torpedo
+  budget. Budgets came from `npm run balance -- --fit` (the budget at which an "average" bot wins a target share)
+  scaled up for human slack, with the slack shrinking level to level (about 2.2× the bot's median on level 1, 1.25×
+  on level 8). The bot is a fixed yardstick, not a model of the user: retune from the user's play.
+- **Why:** Accuracy (hits ÷ shots) can exceed 100% because one torpedo hits every copy of a letter, so it can't set
+  star thresholds. A tight, bot-derived budget would punish a person who doesn't see every word.
+
+## 2026-10-07 · Level ids double as config ids; the quick game is level 0
+- **Status:** active
+- **Decision:** `MissionConfig.id` is the campaign level (1–8); the quick game uses 0 and keeps the tuner's Gameplay
+  knobs. Saves therefore need no extra field. A restored mission whose settings don't match its level (a save from before
+  the ladder) isn't scored.
+- **Why:** Smallest change that lets restored missions record stars.

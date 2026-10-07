@@ -7,6 +7,7 @@ import type { HullFootprint } from '../render/hulls';
 import { createWreck } from '../render/wreck';
 import { footprint, ride, type Floater } from '../scene/buoyancy';
 import { DESTROYER } from '../scene/diorama';
+import { shipClassFor } from '../config/ships';
 
 const RISE_SECONDS = 1.1;
 const SINK_SECONDS = 12;
@@ -54,7 +55,8 @@ export function createFleet(root: Group, board: Board) {
     const span = first.distanceTo(last) + 0.95;
     const scale = span / (DESTROYER.halfLength * 2);
     ships.set(unit.id, { unit } as Ship); // reserve the id while the model loads
-    const model = await loadModel('destroyer');
+    const cls = shipClassFor(unit.length);
+    const model = await loadModel(cls.model);
     // The floater carries a container so the wreck can replace the hull in place.
     const carrier = new Group();
     carrier.add(model);
@@ -78,7 +80,7 @@ export function createFleet(root: Group, board: Board) {
     ship.boom = boom;
     board.uniforms.blastCenter.value.set(ship.mid.x, ship.mid.z);
     board.uniforms.blastAge.value = 0;
-    const wreck = createWreck(await loadModel('destroyer_wreck'), unitId.length * 7 + Math.floor(t));
+    const wreck = createWreck(await loadModel(shipClassFor(ship.unit.length).wreck), unitId.length * 7 + Math.floor(t));
     wreck.update(-1);
     ship.carrier.add(wreck.group);
     wreck.loose.position.set(ship.mid.x, 0, ship.mid.z);

@@ -132,6 +132,12 @@
   display: flex; justify-content: space-between; align-items: center; cursor: pointer;
 }
 .hud .menu button:hover, .hud .menu button:focus-visible { border-color: var(--hud-amber); outline: none; }
+.hud .menu button .l { display: grid; gap: 2px; text-align: left; }
+.hud .menu button small { font: 500 11px var(--hud-font); letter-spacing: 0.06em; text-transform: none; color: var(--hud-dim); }
+.hud .menu button .r { white-space: nowrap; letter-spacing: 0.1em; }
+.hud .menu button.locked { opacity: 0.4; cursor: default; }
+.hud .menu button:disabled:hover { border-color: var(--hud-edge); }
+.hud .menu.wide { width: min(560px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow-y: auto; }
 .hud .menu button.primary { background: rgba(242, 179, 61, 0.16); border-color: rgba(242, 179, 61, 0.7); color: var(--hud-amber); }
 .hud .menu kbd { font: 500 11px var(--hud-font); color: var(--hud-dim); letter-spacing: 0.08em; }
 
@@ -189,6 +195,17 @@
   }
   .hud.menu-open .kb, .hud.menu-open .word .head { display: none; }
 }
+
+/* Menus on a short screen: tighter, no logo. */
+@media (max-height: 520px) and (orientation: landscape) {
+  .hud .menu { padding: 12px 16px; }
+  .hud .menu .logo { display: none; }
+  .hud .menu h2 { font-size: 20px; margin-bottom: 2px; }
+  .hud .menu .actions { gap: 6px; margin-top: 10px; }
+  .hud .menu button { padding: 6px 12px; }
+  .hud .menu dl { margin: 8px 0 0; gap: 3px 16px; }
+}
+@media (max-width: 520px) { .hud .menu .actions { grid-template-columns: 1fr !important; } }
 
 /* Portrait phone: keyboard across the full width at the bottom edge, mode card on top of it. */
 @media (max-width: 760px) and (orientation: portrait) {

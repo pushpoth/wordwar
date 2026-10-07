@@ -1,7 +1,10 @@
 import './hud.css';
 
 export type HudView = {
-  mission: number;
+  /** "MISSION 03" or "QUICK GAME". */
+  title: string;
+  /** The level's name, or a one-line brief. */
+  name: string;
   seed: number;
   battery: number;
   batteryMax: number;
@@ -15,7 +18,16 @@ export type HudView = {
   tried: Map<string, boolean>;
 };
 
-export type MenuAction = { label: string; key: string; run: () => void };
+export type MenuAction = {
+  label: string;
+  key: string;
+  run: () => void;
+  /** A second, dimmer line under the label. */
+  sub?: string;
+  /** Shown on the right in place of the key hint, e.g. "★★☆". */
+  badge?: string;
+  locked?: boolean;
+};
 
 /** A centred card with a title, optional stats and buttons: pause, mission end, and future screens. */
 export type MenuView = {
@@ -24,6 +36,10 @@ export type MenuView = {
   tone?: 'win' | 'lose' | 'neutral';
   stats?: [string, string][];
   actions: MenuAction[];
+  /** Lay the buttons out in this many columns (a level grid). */
+  columns?: number;
+  /** Which button is the highlighted default (first by default). */
+  primary?: number;
 };
 
 /**
@@ -133,8 +149,8 @@ export function createHud() {
     const tpct = Math.round((v.torpedoes / v.torpedoMax) * 100);
     status.innerHTML = `
       ${LOGO}
-      <div class="title"><span class="value">MISSION ${String(v.mission).padStart(2, '0')}</span></div>
-      <div class="label brief">Sink all enemy units</div>
+      <div class="title"><span class="value">${v.title}</span></div>
+      <div class="label brief">${v.name}</div>
       <div class="meter"><div class="row"><span class="label">Score</span><span class="value">${v.score}</span></div></div>
       <div class="meter"><div class="row"><span class="label">Battery</span><span class="value">${v.battery}/${v.batteryMax}</span></div>
         <div class="bar ${pct <= 20 ? 'low' : ''}"><i style="width:${pct}%"></i></div></div>
@@ -189,12 +205,17 @@ export function createHud() {
       ${v.stats ? `<dl>${v.stats.map(([k, val]) => `<dt>${k}</dt><dd>${val}</dd>`).join('')}</dl>` : ''}
       <div class="actions"></div>`;
     const box = menuEl.querySelector('.actions')!;
+    (box as HTMLElement).style.gridTemplateColumns = v.columns ? `repeat(${v.columns}, 1fr)` : '';
+    menuEl.classList.toggle('wide', !!v.columns);
+    const primary = v.primary ?? 0;
     v.actions.forEach((a, i) => {
-      const b = el('button', i === 0 ? 'primary' : '', `${a.label}<kbd>${a.key}</kbd>`);
+      const b = el('button', `${i === primary && !a.locked ? 'primary' : ''} ${a.locked ? 'locked' : ''}`.trim(),
+        `<span class="l">${a.label}${a.sub ? `<small>${a.sub}</small>` : ''}</span><span class="r">${a.locked ? '🔒' : a.badge ?? `<kbd>${a.key}</kbd>`}</span>`);
+      b.disabled = !!a.locked;
       b.addEventListener('click', () => a.run());
       box.appendChild(b);
     });
-    (box.querySelector('button') as HTMLButtonElement | null)?.focus({ preventScroll: true });
+    ((box.querySelectorAll('button')[primary] ?? box.querySelector('button')) as HTMLButtonElement | null)?.focus({ preventScroll: true });
   }
 
   /** Route a key to the open menu; returns true if it was handled. */

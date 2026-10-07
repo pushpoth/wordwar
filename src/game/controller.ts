@@ -1,6 +1,6 @@
 import { Group, Plane, Raycaster, Vector2, Vector3, type Camera, type Scene } from 'three/webgpu';
 import { BATTERY_MAX } from '../config/balance';
-import type { EngineEvent, MissionState, Unit } from '../engine/types';
+import type { EngineEvent, MissionState, MissionSummary, Unit } from '../engine/types';
 import { loadModel, preloadModels } from '../render/assets';
 import { CELL, type Board } from '../render/board';
 import type { HullFootprint, Hulls } from '../render/hulls';
@@ -15,9 +15,12 @@ import { createFleet } from './fleet';
 import { tune } from '../config/tunables';
 import type { MissionConfig } from '../engine/types';
 import { isPaused, setPaused } from '../render/clock';
+import { configFor, LEVELS, levelById, starsFor } from '../config/campaign';
+import { shipModels } from '../config/ships';
 import { createGame, DEFAULT_MISSION, restoreGame, type Game } from './game';
-import { createHud } from './hud';
+import { createHud, type MenuAction } from './hud';
 import { installKeyboard, type Intents } from './input';
+import { currentLevel, isUnlocked, loadProgress, record, writeProgress } from './progress';
 import { clearSave, loadSave, writeSave } from './save';
 
 const PING_TO_REVEAL = 0.45;
@@ -46,10 +49,10 @@ export async function createController(scene: Scene, board: Board, hulls: Hulls,
 
   // Load everything a mission can show, and keep one of each in the scene,
   // out of sight below the sea, until the shaders are compiled (see warmUp).
-  await preloadModels(['destroyer', 'destroyer_wreck', 'submarine']);
+  await preloadModels([...shipModels(), 'submarine']);
   const warm = new Group();
   warm.position.y = -40;
-  warm.add(await loadModel('destroyer'), await loadModel('destroyer_wreck'));
+  for (const m of shipModels()) warm.add(await loadModel(m));
   root.add(warm);
 
   // The player's submarine, holding station on its tile.
@@ -87,8 +90,12 @@ export async function createController(scene: Scene, board: Board, hulls: Hulls,
 
   const later = (delay: number, run: () => void) => queue.push({ at: now + delay, run });
 
-  /** Mission settings from the tuner's Gameplay knobs (applied on restart). */
-  function missionConfig(): MissionConfig {
+  let progress = loadProgress();
+
+  /** A campaign level's settings, or (level 0) the quick game's from the tuner's Gameplay knobs. */
+  function missionConfig(levelId = 0): MissionConfig {
+    const level = levelById(levelId);
+    if (level) return configFor(level);
     return {
       ...DEFAULT_MISSION,
       unitCount: tune.get('game.unitCount'),
@@ -103,10 +110,10 @@ export async function createController(scene: Scene, board: Board, hulls: Hulls,
     else writeSave(game.save());
   }
 
-  /** Begin a mission: a fresh one from a seed, or a restored one already in progress. */
-  function start(seed: number, restored?: Game) {
+  /** Begin a mission: a fresh one from a seed, or a restored one already in progress. Level 0 is the quick game. */
+  function start(seed: number, restored?: Game, levelId = 0) {
     game?.dispose();
-    game = restored ?? createGame(missionConfig(), seed);
+    game = restored ?? createGame(missionConfig(levelId), seed);
     seed = game.seed;
     fleet.clear();
     board.clear();
@@ -124,6 +131,8 @@ export async function createController(scene: Scene, board: Board, hulls: Hulls,
     board.uniforms.sonarRadius.value = 1.6;
     const url = new URL(location.href);
     url.searchParams.set('seed', String(seed));
+    url.searchParams.delete('level');
+    if (game.state.config.id) url.searchParams.set('level', String(game.state.config.id));
     history.replaceState(null, '', url);
     hud.note(restored ? `MISSION RESTORED · SEED ${seed}` : `MISSION START · SEED ${seed}`);
     // A restored mission's ships are already on the water, not rising.
@@ -205,7 +214,8 @@ export async function createController(scene: Scene, board: Board, hulls: Hulls,
     const tried = new Map<string, boolean>();
     if (target) for (const l of target.triedLetters) tried.set(l, target.word.includes(l));
     hud.render({
-      mission: st.config.id,
+      title: st.config.id ? `MISSION ${String(st.config.id).padStart(2, '0')}` : 'QUICK GAME',
+      name: levelById(st.config.id)?.name ?? 'Sink all enemy units',
       seed: game.seed,
       battery: Math.floor(st.battery),
       batteryMax: BATTERY_MAX,
@@ -268,26 +278,7 @@ export async function createController(scene: Scene, board: Board, hulls: Hulls,
         case 'mission:ended':
           ended = true;
           clearSave();
-          later(TORPEDO_RUN + END_CARD_DELAY, () => {
-            const s = e.summary;
-            const win = s.outcome === 'success';
-            const secs = s.elapsedMs / 1000;
-            hud.menu({
-              title: win ? 'MISSION COMPLETE' : 'MISSION FAILED',
-              subtitle: win ? 'All enemy units sunk' : 'Out of torpedoes',
-              tone: win ? 'win' : 'lose',
-              stats: [
-                ['Score', String(s.score)],
-                ['Units sunk', `${s.unitsDestroyed} of ${s.unitsTotal}`],
-                ['Torpedo accuracy', `${Math.round(s.hitRateTorpedo * 100)}%`],
-                ['Time', `${Math.floor(secs / 60)}:${String(Math.floor(secs % 60)).padStart(2, '0')}`],
-              ],
-              actions: [
-                { label: 'New game', key: 'Enter', run: newGame },
-                { label: 'Replay this mission', key: 'R', run: () => start(game.seed) },
-              ],
-            });
-          });
+          later(TORPEDO_RUN + END_CARD_DELAY, () => endCard(e.summary));
           break;
         default:
           break;
@@ -307,20 +298,92 @@ export async function createController(scene: Scene, board: Board, hulls: Hulls,
 
   // ---- Pause and menus ----------------------------------------------------
 
-  const newGame = () => start(Math.floor(Math.random() * 1e6) + 1);
+  const randomSeed = () => Math.floor(Math.random() * 1e6) + 1;
+  const stars = (n: number) => '★'.repeat(n) + '☆'.repeat(3 - n);
+  const levelTitle = (id: number) => (id ? `Mission ${String(id).padStart(2, '0')}` : 'Quick game');
+  /** Start a campaign level on a fresh board. */
+  const startLevel = (id: number) => start(randomSeed(), undefined, id);
 
   function pause(reason = 'Paused') {
     if (ended || isPaused()) return;
     setPaused(true);
     persist();
+    pauseMenu(reason);
+  }
+
+  function pauseMenu(reason = 'Paused') {
+    const id = game.state.config.id;
     hud.menu({
       title: reason.toUpperCase(),
-      subtitle: `Mission ${String(game.state.config.id).padStart(2, '0')} · seed ${game.seed}`,
+      subtitle: `${levelTitle(id)}${levelById(id) ? ` · ${levelById(id)!.name}` : ''} · seed ${game.seed}`,
       actions: [
         { label: 'Continue', key: 'Space / Esc', run: resume },
-        { label: 'Restart mission', key: 'R', run: () => start(game.seed) },
-        { label: 'New game', key: 'N', run: newGame },
+        { label: 'Restart mission', key: 'R', run: () => start(game.seed, undefined, id) },
+        { label: 'Missions', key: 'M', run: () => missions(() => pauseMenu(reason)) },
       ],
+    });
+  }
+
+  /** The level grid. `back` returns to wherever it was opened from. */
+  function missions(back: () => void) {
+    const total = LEVELS.reduce((n, l) => n + (progress.levels[l.id]?.stars ?? 0), 0);
+    const here = currentLevel(progress);
+    hud.menu({
+      title: 'MISSIONS',
+      subtitle: `${total} of ${LEVELS.length * 3} stars`,
+      columns: 2,
+      primary: here - 1,
+      actions: [
+        ...LEVELS.map((l) => {
+          const rec = progress.levels[l.id];
+          return {
+            label: `${l.id}. ${l.name}`,
+            sub: `${l.unitCount} ships · ${l.torpedoBudget} torpedoes`,
+            key: String(l.id),
+            badge: rec ? stars(rec.stars) : undefined,
+            locked: !isUnlocked(progress, l.id),
+            run: () => startLevel(l.id),
+          };
+        }),
+        { label: 'Quick game', sub: 'Random 10×10, tuner settings', key: 'Q', run: () => start(randomSeed()) },
+        { label: 'Back', key: 'Esc', run: back },
+      ],
+    });
+  }
+
+  function endCard(s: MissionSummary) {
+    const id = game.state.config.id;
+    const level = levelById(id);
+    const win = s.outcome === 'success';
+    const secs = s.elapsedMs / 1000;
+    let earned = 0;
+    let unlocked = '';
+    // A restored mission from before the ladder existed has a level's id but not its settings.
+    if (level && game.state.config.torpedoBudget === level.torpedoBudget && game.state.config.unitCount === level.unitCount) {
+      earned = starsFor(level, s);
+      const next = levelById(id + 1);
+      if (win && next && !isUnlocked(progress, next.id)) unlocked = `Mission ${next.id} unlocked`;
+      progress = record(progress, id, earned, s.score);
+      writeProgress(progress);
+    }
+    const next = levelById(id + 1);
+    const again = () => start(randomSeed(), undefined, id);
+    const actions: MenuAction[] = [];
+    if (win && next) actions.push({ label: 'Next mission', key: 'Enter', run: () => startLevel(next.id) });
+    actions.push({ label: win ? 'Play again' : 'Try again', key: win && next ? 'R' : 'Enter', run: again });
+    actions.push({ label: 'Missions', key: 'M', run: () => missions(() => endCard(s)) });
+    hud.menu({
+      title: win ? 'MISSION COMPLETE' : 'MISSION FAILED',
+      subtitle: win ? (unlocked || (level && !next ? 'All missions complete' : 'All enemy units sunk')) : 'Out of torpedoes',
+      tone: win ? 'win' : 'lose',
+      stats: [
+        ...(level ? [['Stars', stars(earned)] as [string, string]] : []),
+        ['Score', String(s.score)],
+        ['Units sunk', `${s.unitsDestroyed} of ${s.unitsTotal}`],
+        ['Torpedoes used', level ? `${s.shotsFiredTorpedo} of ${level.torpedoBudget}` : String(s.shotsFiredTorpedo)],
+        ['Time', `${Math.floor(secs / 60)}:${String(Math.floor(secs % 60)).padStart(2, '0')}`],
+      ],
+      actions,
     });
   }
 
@@ -338,7 +401,7 @@ export async function createController(scene: Scene, board: Board, hulls: Hulls,
   });
   window.addEventListener('pagehide', persist);
   // The tuner's "Restart mission" applies Gameplay knobs.
-  window.addEventListener('ww:restart', () => start(game.seed));
+  window.addEventListener('ww:restart', () => start(game.seed, undefined, game.state.config.id));
   tune.onAny(['cheat.showShips', 'cheat.showWords'], () => { syncBoard(); syncHud(); });
 
   // ---- Input ---------------------------------------------------------------
@@ -413,14 +476,23 @@ export async function createController(scene: Scene, board: Board, hulls: Hulls,
     board.faceCamera(azimuthDeg);
   }
 
-  // Resume a saved mission unless the URL asks for a different seed.
-  const seedParam = Number(new URLSearchParams(location.search).get('seed')) || 0;
+  // Resume a saved mission unless the URL asks for a different one; `?level=N` starts that level (if open).
+  const params = new URLSearchParams(location.search);
+  const seedParam = Number(params.get('seed')) || 0;
+  const levelParam = Number(params.get('level')) || 0;
   const saved = loadSave();
-  if (saved && (!seedParam || seedParam === saved.seed)) {
+  if (saved && (!seedParam || seedParam === saved.seed) && (!levelParam || levelParam === saved.config.id)) {
     start(saved.seed, restoreGame(saved));
     pause('Mission restored');
+  } else if (levelParam && levelById(levelParam)) {
+    start(seedParam || randomSeed(), undefined, levelParam);
+  } else if (seedParam) {
+    start(seedParam);
   } else {
-    start(seedParam || Math.floor(Math.random() * 1e6) + 1);
+    // First visit, or nothing in progress: open at the current level, behind the mission list.
+    start(randomSeed(), undefined, currentLevel(progress));
+    setPaused(true);
+    missions(resume);
   }
 
   return {

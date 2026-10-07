@@ -8,8 +8,9 @@ import { aimAt, fireTorpedo, returnToRadar, switchTarget } from '../engine/torpe
 import type { EngineEvent, MissionConfig, MissionState, Unit } from '../engine/types';
 import type { Action, Save } from './save';
 
+/** The quick game's settings (the tuner's Gameplay knobs adjust them); id 0 is "not a campaign level". */
 export const DEFAULT_MISSION: MissionConfig = {
-  id: 1,
+  id: 0,
   gridSize: 10,
   unitCount: 4,
   torpedoBudget: TORPEDO_BUDGET_DEFAULT,

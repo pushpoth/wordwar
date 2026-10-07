@@ -13,7 +13,7 @@ end to end before visuals and effects are tuned (phases 2 and 3).
 **Slice 1 · Ladder and progress (prescriptive):**
 1. **Level catalog** `src/config/campaign.ts`: ordered levels (id, name, grid
    size, unit count, torpedo budget, battery regen, diagonals, word tier
-   weights, star targets). Slice 1 holds only 10×10 levels; each later slice
+   weights, star targets as shares of the torpedo budget). Slice 1 holds only 10×10 levels; each later slice
    appends. Pure data, tested: every level builds a mission for many seeds.
 2. **Ship classes** `src/config/ships.ts`: word length → class (patrol, destroyer,
    cruiser, battleship) with a model key. All classes use the `destroyer` model
@@ -25,7 +25,7 @@ end to end before visuals and effects are tuned (phases 2 and 3).
    opened from the pause menu, the end card ("Next mission", "Retry",
    "Missions") and first load when nothing is saved. "Quick game" keeps the
    old random 10×10 with the tuner's Gameplay knobs.
-5. **Saves** carry the level id, so finishing a restored mission still records stars.
+5. **Saves** need no new field: the mission config's id is the level id (0 is the quick game), so finishing a restored mission still records stars.
 6. **Balance bot** `src/tools/bot.ts` plus `npm run balance`: plays every level
    headless with a letter-frequency strategy and prints win rate and torpedoes
    used; a test pins each level's win rate inside a band.
@@ -52,13 +52,13 @@ unlockable rewards or modes, mission-select presentation.
 
 ## Build order (slice 1)
 
-1. Level catalog and its test.
-2. Ship class table; fleet reads it.
-3. Progress store and its test.
-4. Controller starts levels from the catalog; saves carry the level; end card records stars.
-5. Mission-select menu and the flows into it.
-6. Balance bot, `npm run balance`, win-rate test; tune the ladder with it.
-7. Push a preview; the user plays the ladder.
+1. ✅ Level catalog and its test.
+2. ✅ Ship class table; fleet reads it.
+3. ✅ Progress store and its test.
+4. ✅ Controller starts levels from the catalog; end card records stars.
+5. ✅ Mission-select menu and the flows into it.
+6. ✅ Balance bot, `npm run balance` (`-- --fit` suggests budgets), win-rate test.
+7. Push a preview; the user plays the ladder and reports how hard each level feels.
 
 ## Done when (slice 1)
 
@@ -67,6 +67,8 @@ unlockable rewards or modes, mission-select presentation.
   and a restored mission still records its result.
 - `npm run balance` shows every level winnable and difficulty rising level to level.
 - The user has played several levels on preview.
+
+# Amended: 2026-10-07 stars come from torpedoes used (accuracy can top 100% because one torpedo can hit several tiles); level 8 drops tier-5 words (they don't always fit six ships on 10×10).
 
 ## Refinement gate
 
