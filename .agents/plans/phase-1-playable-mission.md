@@ -27,11 +27,14 @@ edge blur, camera, sun, sea and gameplay cheats; a phone quality tier; steadier
 adaptive resolution; a cheaper water shader (noise texture, per-vertex shore and
 hull distances).
 
-**Later slices (goals only):** sonar-ping and torpedo-run effects; the full HUD
-from the reference image (target intel, word-progress keyboard, sonar log,
-camera controls); touch input.
+**Slice 3 (goals only; refine against Typemariner's HUD and input before building):**
+the full HUD from the reference image (target intel, word-progress keyboard,
+sonar log, camera controls) and touch input (on-screen keyboard or native
+input, tap to radar a cell and to pick a target, pinch and drag camera). Both
+must hold the phone quality tier's frame rate.
 
-**Out:** difficulty levels and map sizes (phases 4 and 5), progression, audio.
+**Out:** sonar-ping and torpedo-run effects (phase 3), visual tuning (phase 2),
+difficulty levels and map sizes (phases 4 and 5), progression (phase 6), audio.
 
 ## Reuse vs new
 
@@ -50,18 +53,23 @@ camera controls); touch input.
    from engine events, target billboard from `activeUnitId`.
 5. ✅ Keyboard input and the minimal HUD.
 6. ✅ Hit, miss and kill feedback; mission-end card.
-7. Push a preview; the user plays it and reports frame rate.
+7. Push a preview; the user plays it and reports frame rate (in progress,
+   2026-10-07; runs alongside slice 3).
+8. Slice 3: refine, then build the full HUD and touch input.
 
+# Amended: 2026-10-07 slice 3 (full HUD, touch input) added to phase 1; sonar and torpedo effects moved to phase 3; roadmap in status.md renumbered to match.
 # Amended: 2026-10-06 radar-revealed letters display as hints that still need a torpedo (see decisions.md); `?demo` keeps the phase 0 diorama.
 
 ## Done when
 
 - `npm test` passes, including the ported engine tests.
-- A mission can be won and lost in the preview with the keyboard alone.
+- A mission can be won and lost in the preview with the keyboard alone, and
+  on a phone by touch (slice 3).
+- The HUD shows everything in the reference image's HUD.
 - The same `?seed=` gives the same board every time.
 - The user has reported frame rate while playing.
 
 ## Refinement gate
 
-Before step 2, check this plan against the repo and amend it in place
-(`# Amended: <date> <reason>`).
+Before slice 3, check it against the repo and Typemariner's HUD and input code,
+and amend this plan in place (`# Amended: <date> <reason>`).

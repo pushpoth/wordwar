@@ -18,7 +18,7 @@ explosion, depth of field, bloom, grade, SMAA). Run `npm run dev` (port 5190),
 (`--t` pins time; `--query` takes `view=close|ship`, `az=<deg>`, `el=<deg>`).
 In the browser, the arrow keys orbit and tilt the camera.
 
-Open in phase 0:
+Open from phase 0 (scheduled as phase 2, visual tuning):
 - **Frame rate:** WebGPU holds about 56 fps on the dev machine (target 60);
   see `decisions.md`. Cut draw calls before adding more scenery.
 - **User review notes (2026-10-06)** are addressed, waiting on the next review:
@@ -57,19 +57,20 @@ Open in phase 0:
 
 [Phase 1 · playable mission](plans/phase-1-playable-mission.md): the phase 0
 diorama becomes a playable 10×10 mission on the engine ported from Typemariner.
-Phase 0's plan is archived; its open items are listed above.
+Slices 1 and 2 are built; slice 3 (full HUD, touch input) is next. Phase 0's
+plan is archived; its open items are listed above.
 
 ## Roadmap
 
-Only phase 0 is planned in detail. Refine each later phase against the current
+Phase 1 is planned in detail. Refine each later phase against the current
 state of the repo when it starts.
 
 | Phase | Goal | Done when |
 |---|---|---|
-| 0 · Visual test scene | Prove the look; pick the renderer | Screenshots hold up next to the reference at 60 fps |
-| 1 · Engine port | Typemariner's game logic and tests running here; difficulty and map-size presets added to the mission config | Engine tests pass |
-| 2 · Playable | Board, word billboard, keyboard input, camera | A mission can be won or lost |
-| 3 · Feel | Full combat effects and the HUD | Screenshots of every game event |
+| 0 · Visual test scene ✅ | Prove the look; pick the renderer | Screenshots hold up next to the reference at 60 fps |
+| 1 · Playable mission | Engine port, a 10×10 mission playable by keyboard (slices 1–2 ✅), then the full HUD and touch input (slice 3) | A mission can be won or lost on desktop and phone; engine tests pass |
+| 2 · Visual tuning | Close the phase 0 open items (sun glare, ship and sub wakes and animation, weathering, wreck fire, art gaps against the reference) | Screenshots hold up next to the reference at 60 fps on the dev machine |
+| 3 · Feel | Sonar-ping and torpedo-run effects, plus the remaining combat effects | Screenshots of every game event |
 | 4 · Map sizes | 8 / 10 / 12 / 15 / 18 grids; scenery and ship classes scale with size | Each size holds 60 fps |
 | 5 · Difficulty | Level ladder and modifiers, balanced by a simulation bot | Win rates match the target curve |
 | 6 · Progression | Mission select and saved progress | Progress survives a browser restart |

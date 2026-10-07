@@ -84,3 +84,12 @@ Append-only. Close an entry by changing its status; never delete one.
   engine. Cheats (refills) aren't logged, so a cheated mission may restore differently.
 - **Why:** The engine is deterministic, so this is tiny and exact, and it needs
   no serialisation of engine state that could drift as the engine changes.
+
+## 2026-10-07 · Roadmap renumbered: phase 1 is the playable mission, phase 2 is visual tuning
+- **Status:** active
+- **Decision:** Old phases 1 (engine port) and 2 (playable) are merged into phase 1,
+  which also takes the full HUD and touch input (slice 3). Phase 2 is now visual
+  tuning (the phase 0 open items). Sonar-ping and torpedo-run effects move to
+  phase 3 (Feel). Phases 3–6 keep their numbers so existing references hold.
+- **Why:** The roadmap table had drifted from the plan actually being worked, and the
+  user wants gameplay finished before visual polish.
