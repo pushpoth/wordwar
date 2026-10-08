@@ -4,6 +4,7 @@ import { bloom } from 'three/addons/tsl/display/BloomNode.js';
 import { dof } from 'three/addons/tsl/display/DepthOfFieldNode.js';
 import { gaussianBlur } from 'three/addons/tsl/display/GaussianBlurNode.js';
 import { smaa } from 'three/addons/tsl/display/SMAANode.js';
+import { fxaa } from 'three/addons/tsl/display/FXAANode.js';
 import { LOOK } from '../config/look';
 import { tune } from '../config/tunables';
 
@@ -71,13 +72,16 @@ export function createPost(renderer: WebGPURenderer, scene: Scene, camera: Camer
     } else {
       glow = null;
     }
-    pipeline.outputNode = smaa(grade(renderOutput(hdr) as unknown as N4));
+    const graded = grade(renderOutput(hdr) as unknown as N4);
+    // SMAA is three full-screen passes; FXAA (phones) is one.
+    const aa = tune.get<string>('quality.antialias');
+    pipeline.outputNode = aa === 'smaa' ? smaa(graded) : aa === 'fxaa' ? fxaa(graded) : graded;
     pipeline.needsUpdate = true;
   }
   build();
 
   // Structural switches rebuild the chain; everything else is a uniform.
-  tune.onAny(['quality.depthOfField', 'quality.bloom'], build);
+  tune.onAny(['quality.depthOfField', 'quality.bloom', 'quality.antialias'], build);
   let edgeOn = tune.get('post.edgeBlur') > 0;
   tune.on('post.edgeBlur', (v) => {
     u.edgeBlur.value = v as number;

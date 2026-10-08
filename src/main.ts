@@ -123,8 +123,12 @@ async function boot() {
     ocean.update();
     world.update(simTime.value, dt, camera, azimuth());
     post.pipeline.render();
-    const ratio = resolution.sample(fpsCap);
-    if (ratio !== null) renderer.setPixelRatio(ratio);
+    // While paused the loop draws a few frames a second on purpose: that says nothing about speed.
+    if (isPaused()) resolution.settle();
+    else {
+      const ratio = resolution.sample(fpsCap);
+      if (ratio !== null) renderer.setPixelRatio(ratio);
+    }
 
     if (state.frames === 1) {
       mark('firstFrame');

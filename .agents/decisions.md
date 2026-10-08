@@ -221,3 +221,11 @@ Append-only. Close an entry by changing its status; never delete one.
 - **Why:** Looking toward the low sun, the water's sun and sky reflection blew out to white, and depth of field spread
   it over the ships in front. Dimming the sun would flatten the look everywhere; limiting the water alone keeps a
   bright glint path and keeps explosions and lamps bright.
+
+## 2026-10-08 · Phones may render up to 1.5×, with FXAA, and remember where they settled
+- **Status:** active
+- **Decision:** The phone tier's top resolution is 1.5× CSS pixels (was 1.0×) and its antialiasing FXAA (one pass;
+  desktop keeps SMAA, `quality.antialias`). The adaptive controller settles on the highest level that holds the cap and
+  stores it per device, so later loads start there.
+- **Why:** The user: the iPhone holds 60 fps but looks blurry at 0.7×. Letting the controller find the level beats a
+  fixed guess for every phone; a remembered start avoids searching (and the buffer reallocations) on every load.

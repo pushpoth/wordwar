@@ -70,8 +70,13 @@ Open from phase 0 (scheduled as phase 2, visual and performance pass):
 - **Known gaps:** weathering reads as dots up close; the wreck stops burning once the explosion's fire is gone; the
   sub (about 2.4 cells long) overlaps a ship in the next cell when it turns to aim; the diorama sub's wake is straight
   while its path curves.
-- **Next (user's order, 2026-10-08):** a steady frame rate on all devices (the iPhone holds 60 fps but looks blurry at
-  0.7× resolution).
+- **Frame rate (2026-10-08, needs measuring on the Mac and the iPhone):** the adaptive resolution (`src/render/resolution.ts`,
+  tested) no longer drops while paused (the paused loop's 4 fps read as slow, so every menu pushed it to the floor),
+  ignores single hitches and load, climbs back in seconds rather than minutes, and won't bounce back to a level that
+  failed in the last minute. The settled level is remembered per device (`wordwar.resolution` in local storage). The
+  phone tier may now go up to 1.5× (was 1.0×) and uses FXAA instead of SMAA, with bloom off. Ask the user for the
+  `?tune` readout (resolution, fps, draws) on both devices; if the iPhone settles below 1.0×, the ocean shader is the
+  next thing to cut (it covers the screen and loops over 8 hulls and 8 islands per pixel).
 - **Repo:** https://github.com/pushpoth/wordwar (private). The Vercel project
   builds every pushed branch; PR #1 holds phase 0. Work continues on `phase-1-gameplay`.
 - **Deploys:** pushing a branch to GitHub builds a Vercel preview (team

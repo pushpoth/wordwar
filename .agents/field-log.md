@@ -65,3 +65,15 @@ happened, and what to do about it.
 - Also: the chrome-devtools MCP can't start here (no Chrome at `/opt/google/chrome`); captures use the bundled
   `@sparticuz/chromium` as `npm run screenshot` does. In dev, `window.__ww.time` gives scene time and
   `window.__ww.hold(true|false)` freezes it, so a script can shoot a moment of a sequence exactly.
+
+## 2026-10-08 · Adaptive resolution fell to its floor behind every menu
+- **Status:** fixed
+- Paused, the loop draws 4 frames a second on purpose; the resolution sampler read that as a slow frame rate and
+  stepped down every 2 s, and climbing back took about 10 s per 0.05 with any hitch restarting the wait. Likely why
+  the iPhone sat at 0.7× while holding 60 fps. The sampler now skips paused frames, a grace period after load, and
+  single long frames. Class: a measurement fed by a loop that is throttled on purpose.
+
+## 2026-10-08 · Phone review shots framed the board at the top, far away
+- **Status:** fixed
+- `?shot` hides the HUD with `display: none`; the docked keyboard then measured top = 0, so the whole screen counted
+  as the dock and the camera widened and shifted to fit above it. A hidden HUD now docks nothing.

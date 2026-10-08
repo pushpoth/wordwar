@@ -36,10 +36,11 @@ const shot = (group: ShotGroup, key: string, label: string, min: number, max: nu
 
 export const KNOBS: Record<string, Knob[]> = {
   Quality: [
-    { key: 'quality.maxResolution', label: 'max resolution', value: 1.25, phone: 1.0, min: 0.5, max: 2, step: 0.05, apply: 'live', hint: 'Multiple of CSS pixels; adaptive scaling never goes above this.' },
+    { key: 'quality.maxResolution', label: 'max resolution', value: 1.25, phone: 1.5, min: 0.5, max: 2, step: 0.05, apply: 'live', hint: 'Multiple of CSS pixels; adaptive scaling never goes above this.' },
     { key: 'quality.minResolution', label: 'min resolution', value: 0.7, phone: 0.6, min: 0.4, max: 1.5, step: 0.05, apply: 'live' },
     { key: 'quality.fpsCap', label: 'fps cap', value: 60, phone: 60, options: { '30': 30, '60': 60, '120': 120 }, apply: 'live' },
     { key: 'quality.depthOfField', label: 'depth of field', value: true, phone: false, apply: 'live', hint: 'The expensive blur. Phones use the edge blur instead.' },
+    { key: 'quality.antialias', label: 'antialiasing', value: 'smaa', phone: 'fxaa', options: { SMAA: 'smaa', FXAA: 'fxaa', off: 'none' }, apply: 'live', hint: 'SMAA is sharper and three passes; FXAA is one pass.' },
     { key: 'quality.bloom', label: 'bloom', value: true, phone: false, apply: 'live', hint: 'Faint by default (see Look › bloom strength); off on phones, where the pass costs more than it shows.' },
     { key: 'quality.shadowMapSize', label: 'shadow map', value: 2048, phone: 1024, options: { '512': 512, '1024': 1024, '2048': 2048, '4096': 4096 }, apply: 'reload' },
     { key: 'quality.oceanSegments', label: 'ocean segments', value: 256, phone: 160, min: 96, max: 384, step: 16, apply: 'reload' },

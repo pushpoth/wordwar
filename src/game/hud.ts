@@ -267,7 +267,8 @@ export function createHud() {
     const portrait = window.matchMedia('(max-width: 760px) and (orientation: portrait)');
     const measure = () => {
       // Only the portrait keyboard is a dock; the landscape halves sit in the corners.
-      const docked = compact.matches && portrait.matches;
+      // A hidden HUD (review shots) docks nothing: its keyboard would measure as the whole screen.
+      const docked = compact.matches && portrait.matches && word.getClientRects().length > 0;
       const dock = docked ? Math.ceil(window.innerHeight - word.getBoundingClientRect().top) + 4 : 0;
       document.documentElement.style.setProperty('--dock', `${dock}px`);
       // In portrait the mode card sits on top of the keyboard.
