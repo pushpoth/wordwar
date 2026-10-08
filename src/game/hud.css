@@ -255,9 +255,11 @@ body.shot .hud { display: none; }
   .hud .menu.title .logo { font-size: min(45px, 10.5vw); }
   .hud .menu.title button { min-width: 200px; }
 }
-/* Phone portrait: logo and buttons centred across the screen, 5vh down from the top. */
+/* Phone portrait: logo centred 5vh down from the top, the buttons pinned 20vh up from the bottom. */
 @media (max-width: 760px) and (orientation: portrait) {
-  .hud .menu.title { top: calc(var(--gy) + 5vh); left: 50%; right: auto; transform: translateX(-50%); animation: title-in-centred 1.2s ease-out both; }
+  .hud .menu.title { top: calc(var(--gy) + 5vh); bottom: calc(env(safe-area-inset-bottom) + 20vh); left: 50%; right: auto; transform: translateX(-50%); animation: title-in-centred 1.2s ease-out both; }
+  .hud.menu-open .menu.title, .hud.menu-leaving .menu.title { display: flex; flex-direction: column; }
+  .hud .menu.title .actions { margin-top: auto; }
   .hud .menu.title .logo { font-size: min(45px, 10.5vw); }
 }
 @keyframes title-in-centred { from { opacity: 0; transform: translate(-50%, -8px); } to { opacity: 1; transform: translateX(-50%); } }
