@@ -153,6 +153,7 @@ export const KNOBS: Record<string, Knob[]> = {
     { key: 'sky.envIntensity', label: 'sky reflections', value: LOOK.ambient.envIntensity, min: 0, max: 2, step: 0.01, apply: 'live' },
     { key: 'sea.state', label: 'sea state', value: LOOK.seaState, min: 0.2, max: 2.2, step: 0.05, apply: 'live', hint: '0.4 calm · 1 moderate · 1.8 rough. Ships ride harder in rough seas.' },
     { key: 'sea.ripple', label: 'ripple detail', value: 0.16, min: 0, max: 0.5, step: 0.01, apply: 'live' },
+    { key: 'sea.glare', label: 'sun glare limit', value: 0.7, min: 0.3, max: 6, step: 0.05, apply: 'live', hint: 'Water brighter than this rolls off softly. Lower = tamer glint toward a low sun.' },
   ],
   Gameplay: [
     { key: 'game.gridSize', label: 'map size', value: 10, options: { '8×8': 8, '10×10': 10, '12×12': 12, '15×15': 15, '18×18': 18 }, apply: 'restart' },

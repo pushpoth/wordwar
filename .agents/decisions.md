@@ -213,3 +213,11 @@ Append-only. Close an entry by changing its status; never delete one.
 - **Decision:** Bloom strength 0.45 → 0.07; the phone tier turns the pass off.
 - **Why:** The user asked for bloom off unless it could be cut to about 15%. It can; on phones the pass costs GPU time
   that is better spent on resolution (the iPhone runs at 0.7×).
+
+## 2026-10-08 · Sun glare is limited on the water's output, not by dimming the sun
+- **Status:** active
+- **Decision:** The ocean's final colour rolls off softly above a brightness limit (`sea.glare`, default 0.7; at most
+  half as much again above it). The sun, sky and every other material keep their full range.
+- **Why:** Looking toward the low sun, the water's sun and sky reflection blew out to white, and depth of field spread
+  it over the ships in front. Dimming the sun would flatten the look everywhere; limiting the water alone keeps a
+  bright glint path and keeps explosions and lamps bright.

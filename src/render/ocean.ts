@@ -92,6 +92,7 @@ export function createOcean(sunDir: Vector3, opts: { board?: Board; hulls?: Hull
   const islandYaw = uniformArray(Array.from({ length: MAX_ISLANDS }, () => new Vector4(1, 0, 0, 0)), 'vec4');
   const sun = uniform(sunDir.clone().normalize());
   const ripple = uniform(tune.get('sea.ripple'));
+  const glare = uniform(tune.get('sea.glare'));
   const sea = uniform(SEA.state);
 
   const m = new MeshStandardNodeMaterial({ roughness: OCEAN.roughness, metalness: 0 });
@@ -183,10 +184,15 @@ export function createOcean(sunDir: Vector3, opts: { board?: Board; hulls?: Hull
   // Far off, the water takes on the sky just above the horizon behind it (from the sky's
   // reflection map), so the open sea meets the sky without a seam from any height.
   const haze = env ? pmremTexture(env, normalize(positionWorld.sub(cameraPosition).mul(vec3(1, 0, 1)).add(vec3(0, 0.03, 0))), float(0)) : null;
-  if (haze) {
-    const far = smoothstep(70, 640, positionWorld.sub(cameraPosition).xz.length());
-    m.outputNode = vec4(mix(output.rgb, haze.rgb, far), output.a);
-  }
+  // Sun glare: past `glare`, the water's brightness rolls off softly (it can add at most half
+  // as much again), so looking toward a low sun shows a bright glint path, not a white wash
+  // that depth of field then spreads over everything in front of it.
+  const lum = output.rgb.dot(vec3(0.2126, 0.7152, 0.0722)).max(1e-4);
+  const over = lum.sub(glare).max(0);
+  const rolled = lum.min(glare).add(over.div(over.div(glare.mul(0.5)).add(1)));
+  let lit: Node3 = output.rgb.mul(rolled.div(lum));
+  if (haze) lit = mix(lit, haze.rgb, smoothstep(70, 640, positionWorld.sub(cameraPosition).xz.length()));
+  m.outputNode = vec4(lit, output.a);
 
   const mesh = new Mesh(geo, m);
   mesh.receiveShadow = true;
@@ -208,6 +214,7 @@ export function createOcean(sunDir: Vector3, opts: { board?: Board; hulls?: Hull
   }
 
   tune.on('sea.ripple', (v) => (ripple.value = v as number));
+  tune.on('sea.glare', (v) => (glare.value = v as number));
 
   /** The sky's reflection map was re-rendered (the sun moved). */
   function setEnv(tex: Texture) {

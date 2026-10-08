@@ -80,6 +80,8 @@ export async function createController(scene: Scene, board: Board, hulls: Hulls,
     hull: { halfLength: SUB.halfLength * SUB.scale, halfBeam: SUB.halfBeam * SUB.scale },
   };
   let subHeading = 0.6;
+  /** The stern wash while the sub turns (a wake speed, cells per second). */
+  let turnWash = 0;
   const subHalf = SUB.halfLength * SUB.scale;
   const subPose = (): SubPose => ({ x: subFloat.x, z: subFloat.z, yaw: subFloat.yaw, half: subHalf });
   /** The sub's height animation: settling from one depth to another (0 is afloat). */
@@ -350,7 +352,7 @@ export async function createController(scene: Scene, board: Board, hulls: Hulls,
               board.uniforms.blastCenter.value.set(at.x, at.z);
               board.uniforms.blastAge.value = 0.35;
             }
-            if (!e.missed) fleet.jolt(e.targetUnitId);
+            if (!e.missed) fleet.jolt(e.targetUnitId, now);
             syncBoard();
             syncHud();
           });
@@ -738,9 +740,15 @@ export async function createController(scene: Scene, board: Board, hulls: Hulls,
         const want = Math.atan2(-(target.z - subFloat.z), target.x - subFloat.x);
         let d = want - subHeading;
         d = Math.atan2(Math.sin(d), Math.cos(d));
-        subHeading += Math.sign(d) * Math.min(Math.abs(d), SUB_TURN_RATE * dt);
+        const step = Math.min(Math.abs(d), SUB_TURN_RATE * dt);
+        subHeading += Math.sign(d) * step;
+        // Turning churns the water at the stern: a short wash that fades as the turn ends.
+        turnWash += ((dt > 0 ? step / dt / SUB_TURN_RATE : 0) * 0.45 - turnWash) * (1 - Math.exp(-dt * 3));
+      } else {
+        turnWash *= Math.exp(-dt * 3);
       }
       subFloat.yaw = subHeading;
+      subFloat.speed = turnWash;
     }
 
     // The submarine surfaces and dives on cue (title, departure, mission start).

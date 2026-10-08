@@ -132,7 +132,7 @@ export async function buildDiorama(scene: Scene, board: Board, hulls: Hulls) {
     const age = t % BLAST_PERIOD;
     const wreckAge = age - BREAK_AT;
     sunk.ship.visible = wreckAge < 0;
-    wreck.update(wreckAge);
+    wreck.update(wreckAge, t);
     sunk.floater.lift = wreckAge < 0 ? 0 : -wreck.sinkDepth(wreckAge);
     sunk.floater.list = wreckAge < 0 ? undefined : wreck.list(wreckAge);
 

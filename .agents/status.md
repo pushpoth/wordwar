@@ -64,12 +64,14 @@ Open from phase 0 (scheduled as phase 2, visual and performance pass):
   V and sink, fittings fly clear) only at the moment of the kill; billboard
   letters are matte paint with only the rim glowing; the sub turns about a
   forward pivot with drift.
-- **Known gaps:** the sun glare at low camera angles blows out to white (very visible in the close kill shot); the
-  sub's wake is straight while its path curves; weathering reads as dots up close;
-  the wreck stops burning once the explosion's fire is gone.
-- **Next (user's order, 2026-10-08):** sun glare, sub and ship wake and animation, wreckage (pieces should start
-  sinking as they land on the water); then a steady frame rate on all devices (the iPhone holds 60 fps but looks
-  blurry at 0.7× resolution).
+- **Phase 2 visual fixes (2026-10-08, awaiting review):** sun glare rolls off softly on the water (`sea.glare`, 0.7);
+  wreck debris rides the swell and goes under as it lands; the sub churns a short stern wash while it turns; a hit
+  makes a ship heel and shudder (it used to drop 0.08 cells at once).
+- **Known gaps:** weathering reads as dots up close; the wreck stops burning once the explosion's fire is gone; the
+  sub (about 2.4 cells long) overlaps a ship in the next cell when it turns to aim; the diorama sub's wake is straight
+  while its path curves.
+- **Next (user's order, 2026-10-08):** a steady frame rate on all devices (the iPhone holds 60 fps but looks blurry at
+  0.7× resolution).
 - **Repo:** https://github.com/pushpoth/wordwar (private). The Vercel project
   builds every pushed branch; PR #1 holds phase 0. Work continues on `phase-1-gameplay`.
 - **Deploys:** pushing a branch to GitHub builds a Vercel preview (team

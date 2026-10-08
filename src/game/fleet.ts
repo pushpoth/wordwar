@@ -23,6 +23,8 @@ type Ship = {
   /** When the radar's reveal ring set out, and how fast it spreads (cells per second); none: shown whole. */
   reveal?: { at: number; speed: number; reach: number };
   killedAt?: number;
+  /** When a torpedo last hit it: it heels and shudders, then settles. */
+  hitAt?: number;
   wreck?: ReturnType<typeof createWreck>;
   boom?: ReturnType<typeof createExplosion>;
 };
@@ -132,7 +134,7 @@ export function createFleet(root: Group, board: Board) {
         const wreckAge = age - BREAK_AFTER;
         s.model.visible = wreckAge < 0;
         if (s.wreck) {
-          s.wreck.update(wreckAge);
+          s.wreck.update(wreckAge, t);
           lift = wreckAge < 0 ? lift : -s.wreck.sinkDepth(wreckAge);
           s.floater.list = wreckAge < 0 ? undefined : s.wreck.list(wreckAge);
         }
@@ -142,6 +144,14 @@ export function createFleet(root: Group, board: Board) {
           ships.delete(id);
           continue;
         }
+      }
+      // A hit: a sharp heel away from the blast and a shudder, dying out over a second or so.
+      if (s.hitAt !== undefined && s.killedAt === undefined) {
+        const h = t - s.hitAt;
+        const shake = h < 2 ? Math.exp(-h * 3) : 0;
+        lift -= 0.07 * shake;
+        s.floater.list = { roll: 0.13 * shake * Math.cos(h * 9), pitch: 0.03 * shake * Math.sin(h * 13) };
+        if (h >= 2) { s.floater.list = undefined; s.hitAt = undefined; }
       }
       s.floater.lift = lift;
       ride(s.floater, t, dt);
@@ -206,10 +216,10 @@ export function createFleet(root: Group, board: Board) {
     revealing: (id: string) => { const s = ships.get(id); return !!s && (!s.carrier || !!s.reveal); },
     cells: (id: string) => ships.get(id)?.cells,
     mid: (id: string) => ships.get(id)?.mid,
-    /** Shake a ship on a torpedo hit. */
-    jolt: (id: string, amount = 0.08) => {
+    /** Shake a ship on a torpedo hit (at scene time t). */
+    jolt: (id: string, t: number) => {
       const s = ships.get(id);
-      if (s?.floater) s.carrier.position.y -= amount;
+      if (s?.floater) s.hitAt = t;
     },
   };
 }

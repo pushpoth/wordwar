@@ -1,4 +1,5 @@
 import { Group, Vector3, type Object3D } from 'three/webgpu';
+import { waveOffset } from './waves';
 
 /** Small seeded PRNG so every wreck breaks up the same way for the same seed. */
 function mulberry32(seed: number) {
@@ -20,6 +21,11 @@ type Debris = {
 };
 
 const GRAVITY = -3.4;
+/** Debris after splashdown: how fast it goes under (cells per second, in the wreck's scale) and when it's gone. */
+const DEBRIS_SINK = 0.3;
+const DEBRIS_GONE = 3.5;
+const tmp = new Vector3();
+const wave = new Vector3();
 const FOLD_MAX = 0.42; // radians each half tips as the back breaks
 const SINK_DEPTH = 1.1;
 
@@ -27,7 +33,8 @@ const SINK_DEPTH = 1.1;
  * A ship breaking up, built from a `*_wreck` model whose children are `bow`,
  * `stern` (both hinged at the keel on the break line) and `debris_*` pieces.
  * Only created when a ship is destroyed, so intact ships cost nothing extra.
- * Everything is a pure function of `age`, so pinned-time shots are exact.
+ * Everything is a pure function of `age` (and scene time, for debris riding
+ * the swell), so pinned-time shots are exact.
  */
 export function createWreck(model: Object3D, seed = 1) {
   const group = new Group();
@@ -61,9 +68,11 @@ export function createWreck(model: Object3D, seed = 1) {
     return u * u * (3 - 2 * u);
   };
 
-  function update(age: number) {
+  /** Pose everything `age` seconds after the break; `t` (scene time) lets landed pieces ride the waves. */
+  function update(age: number, t?: number) {
     group.visible = loose.visible = age >= 0;
     if (age < 0) return;
+    if (t !== undefined) loose.updateMatrixWorld();
     const fold = FOLD_MAX * (1 - Math.exp(-age * 0.55));
     if (bow) bow.rotation.z = fold;
     if (stern) stern.rotation.z = -fold * 0.8;
@@ -71,13 +80,21 @@ export function createWreck(model: Object3D, seed = 1) {
     for (const d of debris) {
       const a = Math.min(age, d.land);
       d.obj.position.set(d.p0.x + d.v.x * a, d.p0.y + d.v.y * a + 0.5 * GRAVITY * a * a, d.p0.z + d.v.z * a);
-      d.obj.rotation.set(d.spin.x * a, d.spin.y * a, d.spin.z * a);
       if (age > d.land) {
-        // Afloat for a moment, then gone.
+        // In the water: it rides the swell where it fell and starts going under at once,
+        // its tumble dying away, so nothing sits on the surface as if it had landed on rock.
         const after = age - d.land;
-        d.obj.position.y = -0.02 - Math.max(0, after - 1.2) * 0.12;
-        d.obj.visible = after < 6;
+        const slow = (1 - Math.exp(-after * 2.5)) / 2.5;
+        d.obj.rotation.set(d.spin.x * (a + slow), d.spin.y * (a + slow * 0.5), d.spin.z * (a + slow));
+        let surface = 0;
+        if (t !== undefined) {
+          loose.localToWorld(tmp.set(d.obj.position.x, 0, d.obj.position.z));
+          surface = waveOffset(tmp.x, tmp.z, t, wave).y / loose.scale.y;
+        }
+        d.obj.position.y = surface - 0.04 - after * DEBRIS_SINK - after * after * 0.04;
+        d.obj.visible = after < DEBRIS_GONE;
       } else {
+        d.obj.rotation.set(d.spin.x * a, d.spin.y * a, d.spin.z * a);
         d.obj.visible = true;
       }
     }
