@@ -247,6 +247,7 @@ body.shot .hud { display: none; }
 .hud .menu.title button { min-width: 240px; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); background: rgba(8, 18, 26, 0.55); }
 .hud .menu.title button.primary { background: rgba(242, 179, 61, 0.9); color: #10181e; border-color: #f2b33d; }
 .hud .menu.title button.primary kbd { color: rgba(16, 24, 30, 0.7); }
+.hud .menu.title button.primary small { color: #000; }
 .hud .menu.leaving { opacity: 0; transition: opacity 1s ease; animation: none; }
 @keyframes title-in { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
 @media (max-width: 760px) and (orientation: portrait), (max-height: 520px) and (orientation: landscape) {
@@ -254,6 +255,12 @@ body.shot .hud { display: none; }
   .hud .menu.title .logo { font-size: min(45px, 10.5vw); }
   .hud .menu.title button { min-width: 200px; }
 }
+/* Phone portrait: logo and buttons centred across the screen, 5vh down from the top. */
+@media (max-width: 760px) and (orientation: portrait) {
+  .hud .menu.title { top: calc(var(--gy) + 5vh); left: 50%; right: auto; transform: translateX(-50%); animation: title-in-centred 1.2s ease-out both; }
+  .hud .menu.title .logo { font-size: min(45px, 10.5vw); }
+}
+@keyframes title-in-centred { from { opacity: 0; transform: translate(-50%, -8px); } to { opacity: 1; transform: translateX(-50%); } }
 
 /* The mission list: a solid card, so the levels read clearly over any scene. */
 .hud .menu.solid { background: #0a1720; backdrop-filter: none; -webkit-backdrop-filter: none; }
