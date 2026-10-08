@@ -122,6 +122,7 @@ async function boot() {
     updateCamera(dt);
     ocean.update();
     world.update(simTime.value, dt, camera, azimuth());
+    if ('blurScale' in world) post.setBlurScale(world.blurScale());
     post.pipeline.render();
     // While paused the loop draws a few frames a second on purpose: that says nothing about speed.
     if (isPaused()) resolution.settle();

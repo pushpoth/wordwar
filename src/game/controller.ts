@@ -96,6 +96,7 @@ export async function createController(scene: Scene, board: Board, hulls: Hulls,
 
   let game: Game;
   let sign: ReturnType<typeof createWordSign> | null = null;
+  let signFade = 1;
   let signUnit: string | null = null;
   let discovered: string[] = [];
   let queue: Scheduled[] = [];
@@ -227,7 +228,13 @@ export async function createController(scene: Scene, board: Board, hulls: Hulls,
         }
         const unit = game.unit(tile.unitId);
         if (!unit) board.setCell(x, y, CELL.miss);
-        else board.setCell(x, y, unit.destroyed ? CELL.sunk : CELL.hit, tile.letter, isTarget);
+        else {
+          const i = unit.coords.findIndex((c) => c.x === x && c.y === y);
+          const step = unit.coords.length > 1
+            ? [Math.sign(unit.coords[1].x - unit.coords[0].x), Math.sign(unit.coords[1].y - unit.coords[0].y)] as [number, number]
+            : [1, 0] as [number, number];
+          board.setCell(x, y, unit.destroyed ? CELL.sunk : CELL.hit, tile.letter, isTarget, unit.destroyed || unit.revealedLetters.has(i), step);
+        }
       }
     }
     // Ships appear once, the first time any of their tiles is found. A sunk
@@ -245,7 +252,7 @@ export async function createController(scene: Scene, board: Board, hulls: Hulls,
     syncSign();
     // The camera pans to the ship being targeted and orbits around it.
     const active = game.unit(st.activeUnitId);
-    view.focusOn(active && !active.destroyed ? unitMid(active) : null);
+    view.focusOn(active && !active.destroyed ? { ...unitMid(active), y: signHeight(active) * 0.55 } : null);
   }
 
   /** The middle of a ship's tiles, on the water. */
@@ -260,17 +267,22 @@ export async function createController(scene: Scene, board: Board, hulls: Hulls,
   const cinematics = () =>
     tune.get<boolean>('camera.cinematics') && !reducedMotion && new URLSearchParams(location.search).get('cine') !== '0';
 
+  /** How high the word floats over the water: above the mast, ships being scaled to their word length. */
+  function signHeight(u: Unit) {
+    const first = board.cellCenter(u.coords[0].x, u.coords[0].y);
+    const last = board.cellCenter(u.coords[u.length - 1].x, u.coords[u.length - 1].y);
+    return 0.5 + ((first.distanceTo(last) + 0.95) / 4.2) * 0.8;
+  }
+
   function setSign(unit: Unit | null) {
     if (sign) root.remove(sign.group);
     sign = null;
     signUnit = unit?.id ?? null;
     if (!unit) return;
     sign = createWordSign(unit.word);
+    sign.setFade(signFade);
     // Float above the mast: ships are scaled to their word length.
-    const first = board.cellCenter(unit.coords[0].x, unit.coords[0].y);
-    const last = board.cellCenter(unit.coords[unit.length - 1].x, unit.coords[unit.length - 1].y);
-    const shipScale = (first.distanceTo(last) + 0.95) / 4.2;
-    sign.place(unit.coords.map((c) => board.cellCenter(c.x, c.y)), 0.5 + shipScale * 0.8);
+    sign.place(unit.coords.map((c) => board.cellCenter(c.x, c.y)), signHeight(unit));
     root.add(sign.group);
   }
 
@@ -420,12 +432,18 @@ export async function createController(scene: Scene, board: Board, hulls: Hulls,
 
   /** The phone keyboard's docked height; the camera keeps clear of it only while playing. */
   let dockPx = 0;
-  const applyInset = () => {
-    const px = phase === 'play' ? dockPx : 0;
-    if (viewInset.bottom === px) return;
+  /** How far the play framing (the dock inset and the portrait shift) has come in, 0 to 1; it eases so the picture never jumps. */
+  let insetNow = 0;
+  function stepInset(dt: number) {
+    const want = phase === 'play' ? 1 : 0;
+    insetNow += (want - insetNow) * (1 - Math.exp(-dt * 4));
+    if (Math.abs(want - insetNow) < 0.002) insetNow = want;
+    const px = Math.round(dockPx * insetNow);
+    if (viewInset.bottom === px && viewInset.shift === insetNow) return;
     viewInset.bottom = px;
+    viewInset.shift = insetNow;
     view.refit();
-  };
+  }
 
   /** Hand the game to the player. */
   function beginPlay() {
@@ -433,7 +451,6 @@ export async function createController(scene: Scene, board: Board, hulls: Hulls,
     phase = 'play';
     hud.cine(false);
     view.lock(false);
-    applyInset();
   }
 
   /** Enter a cinematic phase: the HUD steps aside and the camera is the shot's. */
@@ -442,7 +459,6 @@ export async function createController(scene: Scene, board: Board, hulls: Hulls,
     phase = next;
     hud.cine(true);
     view.lock(true);
-    applyInset();
   }
 
   /**
@@ -450,8 +466,18 @@ export async function createController(scene: Scene, board: Board, hulls: Hulls,
    * the sub as it surfaces, then the main menu. The board behind it is the
    * current level's, without ships; it is never saved.
    */
+  let titleAt = 0;
+  /** How much of the miniature blur shows: none while the title looks out at the horizon, easing in as it descends to the sub. */
+  function blurScale() {
+    if (phase !== 'title' || !cinematics()) return 1;
+    const tp = titleParams();
+    const k = Math.min(1, Math.max(0, (now - titleAt - tp.high) / tp.descend));
+    return k * k * (3 - 2 * k);
+  }
+
   function title() {
     enterCinema('title');
+    titleAt = now;
     hud.menu(null);
     start(randomSeed(), undefined, currentLevel(progress));
     const tp = titleParams();
@@ -674,7 +700,7 @@ export async function createController(scene: Scene, board: Board, hulls: Hulls,
     setPaused(false);
   }
 
-  hud.watchDock((px) => { dockPx = px; viewInset.bottom = -1; applyInset(); });
+  hud.watchDock((px) => { dockPx = px; });
   hud.onPause(() => pause());
   hud.onCamera({ zoomIn: view.zoomIn, zoomOut: view.zoomOut, rotate: () => view.rotate(1) });
   // Leaving the tab or app pauses the game; progress is already saved.
@@ -714,10 +740,15 @@ export async function createController(scene: Scene, board: Board, hulls: Hulls,
 
   // ---- Frame -----------------------------------------------------------------
 
+  const look = new Vector3();
+  /** The camera's tilt below level, in degrees. */
+  const tiltDeg = (camera: Camera) => (Math.asin(-camera.getWorldDirection(look).y) * 180) / Math.PI;
+
   let lastBattery = -1;
   function update(t: number, dt: number, camera: Camera, azimuthDeg: number) {
     now = t;
     lastCamera = camera;
+    stepInset(dt);
     // While paused the game clock stands still, but everything is still posed
     // at the frozen time (a restored mission pauses before its first frame).
     if (!isPaused()) {
@@ -768,10 +799,16 @@ export async function createController(scene: Scene, board: Board, hulls: Hulls,
     hulls.set(prints);
 
     // A new contact's word shows once the radar has scanned the whole hull in.
-    if (sign) sign.group.visible = !fleet.revealing(signUnit ?? '');
+    if (sign) {
+      sign.setHidden(fleet.revealing(signUnit ?? ''));
+      // The billboards fade out as a shot or a mission start or end takes over the picture, and back in after.
+      const want = phase === 'play' && !view.playing && !ended ? 1 : 0;
+      signFade += (want - signFade) * (1 - Math.exp(-dt * (want ? 4 : 14)));
+      sign.setFade(signFade);
+    }
     sign?.update(camera, t);
     labels.update(camera);
-    board.faceCamera(azimuthDeg);
+    board.faceCamera(azimuthDeg, tiltDeg(camera));
   }
 
   // A page load opens on the title sequence and the main menu. `?level=N` or `?seed=` go straight to
@@ -819,5 +856,6 @@ export async function createController(scene: Scene, board: Board, hulls: Hulls,
     warmUp: fleet.warmUp,
     warmDone: () => root.remove(warm),
     ready: hud.ready,
+    blurScale,
   };
 }

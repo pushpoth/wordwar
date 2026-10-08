@@ -238,3 +238,13 @@ Append-only. Close an entry by changing its status; never delete one.
 - **Why:** The user: the default framing centred on the sub and cropped the board's left corner; a split keyboard
   only helps thumbs on a landscape phone. Reading "landscape" as landscape phones is my call; desktop gets the single block.
 
+
+
+## 2026-10-09 · Camera motion is velocity-continuous; board letters turn to their ship rather than snap to the grid
+- **Status:** active
+- **Decision:** Every camera ease is a critically damped spring that inherits the speed the camera already had, and a
+  turn to a new heading carries on in the direction it is already going (past 25° of difference) rather than doubling
+  back. Board letters rotate by a free angle to read along their ship, never upside down; they are not mirrored.
+- **Why:** The user saw the camera stop mid-pan and reverse, and letters at odd quarter turns. Mirroring letters to
+  force left-to-right reading would move radar-revealed letters onto cells the radar hasn't scanned, so I turn the
+  glyphs, not the cells.

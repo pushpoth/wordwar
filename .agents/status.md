@@ -72,6 +72,13 @@ Open from phase 0 (scheduled as phase 2, visual and performance pass):
   re-fit when the docked keyboard changes the field of view), zooming in 25% closer than before; landscape and desktop
   framing unchanged. The keyboard is one standard QWERTY block everywhere except landscape phones, where it splits (B on
   the right, word row above the right half). Word row 20% bigger; keys spaced the same all round (`--kg`).
+- **Round 2 portrait and camera pass (2026-10-09, awaiting device check):** portrait fills the width with the board
+  (`FIT_MARGIN` 0) and shifts the picture down 5vh while playing; the dock inset and shift ease in (`stepInset` in the
+  controller) so the mission-start hand-off no longer jumps. The camera now moves on critically damped springs that keep
+  their velocity (`spring`, `turn` in `src/render/camera.ts`): a new goal continues the current turn instead of reversing.
+  Targeting a ship pans to a point between hull and billboard. Billboards fade out for kill shots and mission start/end.
+  Board letters: confirmed ones black on yellow, radar returns a 20% cell with a 30% letter, each turned to read along
+  its ship on screen (left to right or top to bottom, free angle). The title's horizon view has no blur (`blurScale`).
 - **Known gaps:** weathering reads as dots up close; the wreck stops burning once the explosion's fire is gone; the
   sub (about 2.4 cells long) overlaps a ship in the next cell when it turns to aim; the diorama sub's wake is straight
   while its path curves.

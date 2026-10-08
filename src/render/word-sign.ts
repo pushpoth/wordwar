@@ -31,10 +31,9 @@ const TILE = 0.78;
 const slabGeo = new RoundedBoxGeometry(TILE, TILE, 0.16, 3, 0.07);
 const faceGeo = new PlaneGeometry(TILE * 0.86, TILE * 0.86);
 
-const slabMat = new MeshStandardNodeMaterial({ color: 0x1b2025, roughness: 0.35, metalness: 0.75 });
 // Amber rim: glows along the slab edges, brightest on the bevel.
 const rimUV = uv().sub(0.5).abs();
-slabMat.emissiveNode = vec3(1.0, 0.62, 0.12).mul(smoothstep(0.38, 0.5, max(rimUV.x, rimUV.y)).mul(1.4));
+const rimGlow = vec3(1.0, 0.62, 0.12).mul(smoothstep(0.38, 0.5, max(rimUV.x, rimUV.y)).mul(1.4));
 
 /**
  * The floating target word: one slab per letter above each of the ship's cells,
@@ -44,6 +43,11 @@ export function createWordSign(word: string) {
   const group = new Group();
   group.name = `word:${word}`;
   const revealedU: ReturnType<typeof uniform>[] = [];
+  /** 1 shows the sign, 0 hides it (see `setFade`). */
+  const fade = uniform(1);
+  const slabMat = new MeshStandardNodeMaterial({ color: 0x1b2025, roughness: 0.35, metalness: 0.75, transparent: true });
+  slabMat.emissiveNode = rimGlow;
+  slabMat.opacityNode = fade;
   const tiles: Group[] = [];
 
   [...word.toUpperCase()].forEach((ch) => {
@@ -58,13 +62,13 @@ export function createWordSign(word: string) {
     const blankTex = texture(glyph('_'));
     // Painted letters, lit by the scene like the slab they sit on: only the
     // rim glows. Hidden letters show a faded amber stencil underscore.
-    const face = new MeshStandardNodeMaterial({ roughness: 0.62, metalness: 0, alphaTest: 0.5 });
+    const face = new MeshStandardNodeMaterial({ roughness: 0.62, metalness: 0, alphaTest: 0.02, transparent: true });
     const paint = vec3(0.86, 0.82, 0.72);
     const stencil = vec3(0.55, 0.32, 0.06);
     // rev: 0 unknown (underscore), 0.5 radar hint (amber stencil letter, still
     // has to be torpedoed), 1 confirmed hit (painted letter).
     face.colorNode = vec4(mix(stencil.mul(1.6), paint, smoothstep(0.6, 0.95, rev)), 1);
-    face.opacityNode = mix(blankTex.a.mul(0.9), letterTex.a, smoothstep(0.2, 0.3, rev));
+    face.opacityNode = mix(blankTex.a.mul(0.9), letterTex.a, smoothstep(0.2, 0.3, rev)).mul(fade);
     const faceMesh = new Mesh(faceGeo, face);
     faceMesh.position.z = 0.082;
     faceMesh.renderOrder = 4;
@@ -122,5 +126,17 @@ export function createWordSign(word: string) {
     });
   }
 
-  return { group, place, setRevealed, update };
+  /** Fade the whole sign (1 shown, 0 gone). */
+  function setFade(v: number) {
+    fade.value = v;
+    group.visible = v > 0.01 && !hidden;
+  }
+  let hidden = false;
+  /** Hide it outright (while a new contact's hull is still being scanned in). */
+  function setHidden(h: boolean) {
+    hidden = h;
+    group.visible = fade.value > 0.01 && !hidden;
+  }
+
+  return { group, place, setRevealed, setFade, setHidden, update };
 }

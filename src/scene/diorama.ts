@@ -70,7 +70,7 @@ export async function buildDiorama(scene: Scene, board: Board, hulls: Hulls) {
   for (const s of SHIPS.slice(1)) await placeShip(s);
   target.cells.forEach((cell, i) => {
     const ch = SHIPS[0].revealed[i];
-    board.setCell(cell.x + board.size / 2 - 0.5, cell.z + board.size / 2 - 0.5, ch === '_' ? CELL.hidden : CELL.hit, ch === '_' ? '' : ch, true);
+    board.setCell(cell.x + board.size / 2 - 0.5, cell.z + board.size / 2 - 0.5, ch === '_' ? CELL.hidden : CELL.hit, ch === '_' ? '' : ch, true, true);
   });
 
   const sign = createWordSign(SHIPS[0].word);
@@ -86,7 +86,7 @@ export async function buildDiorama(scene: Scene, board: Board, hulls: Hulls) {
   wreck.loose.rotation.y = sunk.floater.yaw;
   wreck.loose.scale.setScalar(sunk.scale);
   root.add(wreck.loose);
-  sunk.cells.forEach((cell, i) => board.setCell(cell.x + board.size / 2 - 0.5, cell.z + board.size / 2 - 0.5, CELL.sunk, SUNK.word[i]));
+  sunk.cells.forEach((cell, i) => board.setCell(cell.x + board.size / 2 - 0.5, cell.z + board.size / 2 - 0.5, CELL.sunk, SUNK.word[i], false, true));
   const boom = createExplosion(7);
   boom.group.position.set(sunk.mid.x + 0.3, 0.15, sunk.mid.z);
   root.add(boom.group, boom.flash);

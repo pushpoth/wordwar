@@ -25,6 +25,8 @@ export function createPost(renderer: WebGPURenderer, scene: Scene, camera: Camer
     focalLength: uniform(tune.get('post.dofRange')),
     bokeh: uniform(tune.get('post.dofBokeh')),
     edgeBlur: uniform(tune.get('post.edgeBlur')),
+    /** 0 to 1: how much of both blurs shows (the title's first look at the horizon has none). */
+    blurScale: uniform(1),
     edgeBand: uniform(tune.get('post.edgeBand')),
     edgeCenter: uniform(tune.get('post.edgeCenter')),
     edgeRamp: uniform(0.28),
@@ -58,12 +60,12 @@ export function createPost(renderer: WebGPURenderer, scene: Scene, camera: Camer
   function build() {
     let hdr: N4 = color;
     if (tune.get<boolean>('quality.depthOfField')) {
-      hdr = dof(color, viewZ, u.focus, u.focalLength, u.bokeh) as unknown as N4;
+      hdr = dof(color, viewZ, u.focus, u.focalLength, u.bokeh.mul(u.blurScale)) as unknown as N4;
     }
     if (tune.get('post.edgeBlur') > 0) {
       const soft = gaussianBlur(hdr, 2.2, 4, { resolutionScale: 0.5 }) as unknown as N4;
       const off = abs(screenUV.y.sub(u.edgeCenter));
-      const mask = smoothstep(u.edgeBand, u.edgeBand.add(u.edgeRamp), off).mul(u.edgeBlur).min(1);
+      const mask = smoothstep(u.edgeBand, u.edgeBand.add(u.edgeRamp), off).mul(u.edgeBlur).mul(u.blurScale).min(1);
       hdr = mix(hdr, soft, mask);
     }
     if (tune.get<boolean>('quality.bloom')) {
@@ -124,5 +126,7 @@ export function createPost(renderer: WebGPURenderer, scene: Scene, camera: Camer
     u.focus.value = d + tune.get('post.focusOffset');
   }
 
-  return { pipeline, uniforms: u, setFocusDistance, setHorizon };
+  const setBlurScale = (v: number) => { u.blurScale.value = v; };
+
+  return { pipeline, uniforms: u, setFocusDistance, setHorizon, setBlurScale };
 }

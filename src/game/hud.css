@@ -60,7 +60,7 @@
 @media (prefers-reduced-motion: reduce) { .hud .sonar .sweep { animation: none; } }
 
 /* Word progress, length and keyboard, bottom right */
-.hud .word { right: 16px; bottom: 16px; width: 430px; }
+.hud .word { right: 16px; bottom: 16px; width: 430px; background: rgba(8, 18, 26, 0.87); }
 .hud .word .head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 2px 0 13px; }
 .hud .word .letters { font-size: 47px; font-weight: 700; letter-spacing: 0.32em; min-height: 60px; line-height: 60px; }
 .hud .word .letters b { font-weight: 700; }
@@ -161,6 +161,7 @@
   .hud { --gx: max(8px, env(safe-area-inset-left)); --gy: max(8px, env(safe-area-inset-top)); --gr: max(8px, env(safe-area-inset-right)); --gb: max(8px, env(safe-area-inset-bottom)); }
   .hud .panel { padding: 8px 10px; border-radius: 8px; backdrop-filter: none; -webkit-backdrop-filter: none; background: rgba(8, 18, 26, 0.8); }
   .hud .side .panel { background: rgba(0, 0, 0, 0.6); }
+  .hud .word { background: rgba(8, 18, 26, 0.95); }
   .hud .value { font-size: 15px; }
   .hud .status { left: var(--gx); top: var(--gy); width: 134px; gap: 6px; }
   .hud .status .brief { display: none; }
@@ -187,7 +188,7 @@
   .hud .word, .hud .keys { display: contents; }
   .hud .kb {
     position: absolute; bottom: var(--gb); padding: 6px 8px; pointer-events: auto; --kg: 4px;
-    background: rgba(8, 18, 26, 0.8); border: 1px solid var(--hud-edge); border-radius: 8px;
+    background: rgba(8, 18, 26, 0.95); border: 1px solid var(--hud-edge); border-radius: 8px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
   }
   .hud .kl { left: var(--gx); width: calc(6.5 * var(--u) + 16px); }
@@ -196,7 +197,7 @@
   .hud .word .head {
     position: absolute; right: var(--gr); bottom: calc(var(--gb) + 144px); box-sizing: border-box; min-width: calc(5 * var(--u) + 16px);
     margin: 0; padding: 4px 14px; gap: 14px;
-    background: rgba(8, 18, 26, 0.8); border: 1px solid var(--hud-edge); border-radius: 8px;
+    background: rgba(8, 18, 26, 0.95); border: 1px solid var(--hud-edge); border-radius: 8px;
   }
   .hud.menu-open .kb, .hud.menu-open .word .head { display: none; }
 }

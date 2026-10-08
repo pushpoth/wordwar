@@ -18,9 +18,9 @@ const ZOOM_MAX = 1.35;
 const ZOOM_STEP = 0.8;
 /** Portrait phones may zoom in a quarter closer than the other layouts. */
 const PORTRAIT_ZOOM_MIN = 0.75;
-/** Portrait framing: cells of sea kept around the board for its labels, and the share of the half-width the board may fill. */
-const FIT_MARGIN = 0.7;
-const FIT_FILL = 0.96;
+/** Portrait framing: cells of sea kept around the board, and the share of the half-width the board may fill (all of it). */
+const FIT_MARGIN = 0;
+const FIT_FILL = 1;
 const ROTATE_STEP_DEG = 90;
 
 /**
@@ -81,7 +81,7 @@ export function createCamera(aspect: number) {
   let homeAz = orbit.az;
   let homeEl = orbit.el;
   /** A point (a revealed ship) the camera pans to and orbits around; null for the board's middle. */
-  let focus: { x: number; z: number } | null = null;
+  let focus: { x: number; z: number; y?: number } | null = null;
   let script: { fn: Shot; t: number; restore: { az: number; el: number; dist: number } } | null = null;
   /** The player can't move the camera while a cinematic owns it. */
   let locked = false;
@@ -153,11 +153,11 @@ export function createCamera(aspect: number) {
       center.set(0, tune.get<number>('camera.targetY'), f.z);
       focus = null;
       target.copy(center);
-      if (instant) { distance = baseDistance; goal.dist = null; place(); }
+      if (instant) { distance = baseDistance; goal.dist = null; place(); resync(); }
       else { goal.rate = 3; goal.dist = baseDistance; place(); }
     },
     /** Pan to a point (and orbit around it from now on), or back to the board's middle with null. */
-    focusOn: (p: { x: number; z: number } | null) => { focus = p ? { x: p.x, z: p.z } : null; },
+    focusOn: (p: { x: number; z: number; y?: number } | null) => { focus = p ? { x: p.x, z: p.z, y: p.y } : null; },
     /**
      * Play a shot: the camera eases along the poses it returns, then settles
      * back to `restore` (the framing before the shot unless given). Any camera
@@ -180,7 +180,7 @@ export function createCamera(aspect: number) {
     /** Ignore the player's camera controls (during cinematics). */
     lock: (on: boolean) => { locked = on; if (on) { held.clear(); orbit.vAz = orbit.vEl = 0; } },
     /** Turn to a heading (degrees), the short way round, at `rate`. */
-    turnTo: (az: number, rate: number) => { goal.rate = rate; goal.az = orbit.az + wrap180(az - orbit.az); },
+    turnTo: (az: number, rate: number) => { goal.rate = rate; goal.az = orbit.az + turn(az, orbit.az, vel.az); },
     /** The vertical field of view and aspect, for shots composed by screen position. */
     lens: () => ({ fov: camera.fov, aspect: camera.aspect }),
     /** Re-fit the view (after the HUD's docked area changes size). */
@@ -193,7 +193,8 @@ export function createCamera(aspect: number) {
       baseDistance = f.dist;
       closest = f.closest;
       if (script) script.restore.dist *= k;
-      else distance *= k;
+      else { distance *= k; last.dist *= k; }
+      vel.dist *= k;
       if (goal.dist !== null) goal.dist *= k;
       place();
     },
@@ -239,7 +240,7 @@ export function createCamera(aspect: number) {
     const { restore } = script;
     script = null;
     goal.rate = tune.get<number>('shot.returnRate');
-    goal.az = orbit.az + wrap180(restore.az - orbit.az);
+    goal.az = orbit.az + turn(restore.az, orbit.az, vel.az);
     goal.el = restore.el;
     goal.dist = restore.dist;
     return true;
@@ -266,11 +267,43 @@ export function createCamera(aspect: number) {
       center.set(0, tune.get('camera.targetY'), f.z);
       if (!focus && !script) target.copy(center);
       place();
+      resync();
     });
     tune.on('camera.elevation', (v) => { orbit.el = homeEl = v as number; place(); });
     tune.on('camera.azimuth', (v) => { orbit.az = homeAz = v as number; place(); });
     tune.on('camera.fov', () => fitFov(camera, camera.aspect));
   }
+
+  // Motion is velocity-continuous: whatever moves the camera (a shot, a pan, a button), the next thing
+  // to move it picks up from the speed it was going, so it never stops dead or doubles back.
+  type Axis = 'az' | 'el' | 'dist' | 'x' | 'y' | 'z';
+  const vel: Record<Axis, number> = { az: 0, el: 0, dist: 0, x: 0, y: 0, z: 0 };
+  const last: Record<Axis, number> = { az: orbit.az, el: orbit.el, dist: distance, x: target.x, y: target.y, z: target.z };
+  const sprung = new Set<Axis>();
+  /** How much faster a critically damped spring is than the plain ease it replaces, for the same `rate`. */
+  const SPRING = 1.6;
+  /** One critically damped spring step toward `goal`; keeps the axis's velocity. */
+  function spring(axis: Axis, cur: number, goal: number, rate: number, dt: number) {
+    const w = rate * SPRING;
+    const v = (vel[axis] + dt * w * w * (goal - cur)) / (1 + 2 * w * dt + w * w * dt * dt);
+    vel[axis] = v;
+    sprung.add(axis);
+    return cur + dt * v;
+  }
+  /**
+   * The signed turn from heading `from` to `to`: the short way, unless the camera is already turning the
+   * other way at speed, in which case it carries on round rather than stop and reverse.
+   */
+  function turn(to: number, from: number, speed: number) {
+    const d = wrap180(to - from);
+    if (Math.abs(speed) > 10 && Math.sign(speed) !== Math.sign(d) && Math.abs(d) > 25) return d + 360 * Math.sign(speed);
+    return d;
+  }
+  /** Forget the last frame (after the camera was moved by hand), so no speed is read from the jump. */
+  const resync = (zero = true) => {
+    Object.assign(last, { az: orbit.az, el: orbit.el, dist: distance, x: target.x, y: target.y, z: target.z });
+    if (zero) for (const k of Object.keys(vel) as Axis[]) vel[k] = 0;
+  };
 
   function update(dt: number) {
     const wantAz = (held.has('ArrowLeft') ? -1 : 0) + (held.has('ArrowRight') ? 1 : 0);
@@ -279,6 +312,7 @@ export function createCamera(aspect: number) {
     orbit.vAz += (wantAz * SPIN_DEG_PER_S - orbit.vAz) * ease;
     orbit.vEl += (wantEl * TILT_DEG_PER_S - orbit.vEl) * ease;
     let moved = false;
+    sprung.clear();
     if (Math.abs(orbit.vAz) >= 0.01 || Math.abs(orbit.vEl) >= 0.01) {
       orbit.az = (orbit.az + orbit.vAz * dt) % 360;
       orbit.el = MathUtils.clamp(orbit.el + orbit.vEl * dt, minTilt(), MAX_TILT);
@@ -291,7 +325,7 @@ export function createCamera(aspect: number) {
       const p = script.fn(script.t);
       if (!p) endShot();
       else {
-        const k = p.snap ? 1 : 1 - Math.exp(-dt * (p.rate ?? 4));
+        const rate = p.rate ?? 4;
         steered = !!p.target;
         if (p.target && p.eye) {
           // Standing at an eye point: the orbit that puts the camera there.
@@ -304,10 +338,21 @@ export function createCamera(aspect: number) {
           p.el = MathUtils.radToDeg(Math.asin(dy / d));
           p.az = MathUtils.radToDeg(Math.atan2(dx, dz));
         }
-        if (p.target) target.lerp(new Vector3(p.target.x, p.target.y ?? center.y, p.target.z), k);
-        if (p.az !== undefined) orbit.az += wrap180(p.az - orbit.az) * k;
-        if (p.el !== undefined) orbit.el += (p.el - orbit.el) * k;
-        if (p.dist !== undefined) distance += (p.dist - distance) * k;
+        if (p.target) {
+          const ty = p.target.y ?? center.y;
+          if (p.snap) target.set(p.target.x, ty, p.target.z);
+          else {
+            target.x = spring('x', target.x, p.target.x, rate, dt);
+            target.y = spring('y', target.y, ty, rate, dt);
+            target.z = spring('z', target.z, p.target.z, rate, dt);
+          }
+        }
+        if (p.az !== undefined) {
+          if (p.snap) orbit.az += wrap180(p.az - orbit.az);
+          else orbit.az = spring('az', orbit.az, orbit.az + turn(p.az, orbit.az, vel.az), rate, dt);
+        }
+        if (p.el !== undefined) orbit.el = p.snap ? p.el : spring('el', orbit.el, p.el, rate, dt);
+        if (p.dist !== undefined) distance = p.snap ? p.dist : spring('dist', distance, p.dist, rate, dt);
         orbit.el = MathUtils.clamp(orbit.el, -60, 89);
         setCinema(p.fade ?? cine.fade, p.bars ?? cine.bars);
         moved = true;
@@ -318,30 +363,41 @@ export function createCamera(aspect: number) {
       setCinema(Math.max(0, cine.fade - dt * 2.5), Math.max(0, cine.bars - dt * 1.5));
     }
     if (!steered) {
-      const want = focus ? { x: focus.x, y: center.y, z: focus.z } : center;
-      const k = 1 - Math.exp(-dt * tune.get<number>('shot.focusRate'));
-      if (Math.abs(want.x - target.x) + Math.abs(want.z - target.z) > 0.002) {
-        target.x += (want.x - target.x) * k;
-        target.y += (want.y - target.y) * k;
-        target.z += (want.z - target.z) * k;
+      const want = focus ? { x: focus.x, y: focus.y ?? center.y, z: focus.z } : center;
+      const rate = tune.get<number>('shot.focusRate');
+      const off = Math.abs(want.x - target.x) + Math.abs(want.y - target.y) + Math.abs(want.z - target.z);
+      const speed = Math.abs(vel.x) + Math.abs(vel.y) + Math.abs(vel.z);
+      if (off > 0.002 || speed > 0.01) {
+        target.x = spring('x', target.x, want.x, rate, dt);
+        target.y = spring('y', target.y, want.y, rate, dt);
+        target.z = spring('z', target.z, want.z, rate, dt);
         moved = true;
       }
     }
-    const goalEase = 1 - Math.exp(-dt * goal.rate);
     if (goal.el !== null) {
-      orbit.el += (goal.el - orbit.el) * goalEase;
-      if (Math.abs(goal.el - orbit.el) < 0.05) { orbit.el = goal.el; goal.el = null; }
+      orbit.el = spring('el', orbit.el, goal.el, goal.rate, dt);
+      if (Math.abs(goal.el - orbit.el) < 0.05 && Math.abs(vel.el) < 0.5) { orbit.el = goal.el; goal.el = null; vel.el = 0; }
       moved = true;
     }
     if (goal.az !== null) {
-      orbit.az += (goal.az - orbit.az) * goalEase;
-      if (Math.abs(goal.az - orbit.az) < 0.05) { orbit.az = goal.az % 360; goal.az = null; }
+      orbit.az = spring('az', orbit.az, goal.az, goal.rate, dt);
+      if (Math.abs(goal.az - orbit.az) < 0.05 && Math.abs(vel.az) < 0.5) { orbit.az = goal.az % 360; goal.az = null; vel.az = 0; resync(false); }
       moved = true;
     }
     if (goal.dist !== null) {
-      distance += (goal.dist - distance) * goalEase;
-      if (Math.abs(goal.dist - distance) < 0.01) { distance = goal.dist; goal.dist = null; }
+      distance = spring('dist', distance, goal.dist, goal.rate, dt);
+      if (Math.abs(goal.dist - distance) < 0.01 && Math.abs(vel.dist) < 0.05) { distance = goal.dist; goal.dist = null; vel.dist = 0; }
       moved = true;
+    }
+    // Whatever moved by other means (a snapped shot, the arrow keys, a drag) sets the speed the next move starts from.
+    if (dt > 1e-4) {
+      const now: Record<Axis, number> = { az: orbit.az, el: orbit.el, dist: distance, x: target.x, y: target.y, z: target.z };
+      for (const k of Object.keys(now) as Axis[]) {
+        if (sprung.has(k)) { last[k] = now[k]; continue; }
+        const d = k === 'az' ? wrap180(now[k] - last[k]) : now[k] - last[k];
+        vel[k] += (d / dt - vel[k]) * 0.6;
+        last[k] = now[k];
+      }
     }
     if (moved) place();
   }
@@ -361,7 +417,9 @@ export function createCamera(aspect: number) {
 export type CameraControls = ReturnType<typeof createCamera>['controls'];
 
 /** Screen pixels at the bottom taken by a docked HUD (the phone keyboard); the board is framed above them. */
-export const viewInset = { bottom: 0 };
+export const viewInset = { bottom: 0, /** 0 to 1: how far the picture has moved down by `PORTRAIT_SHIFT` (portrait play only). */ shift: 0 };
+/** Portrait play moves the picture down this share of the screen's height, so the board sits mid-screen under the HUD cards. */
+const PORTRAIT_SHIFT = 0.05;
 
 /**
  * Keep the board in frame on narrow screens by widening the vertical FOV. A
@@ -376,7 +434,8 @@ export function fitFov(camera: PerspectiveCamera, aspect: number) {
   camera.fov = aspect >= 1.4 ? base : base * Math.min(1.9, 1.4 / aspect);
   // Widen so the same scene fits the shorter free area.
   camera.fov = MathUtils.radToDeg(2 * Math.atan(Math.tan(MathUtils.degToRad(camera.fov / 2)) / free));
-  if (viewInset.bottom > 0) camera.setViewOffset(window.innerWidth, h, 0, viewInset.bottom / 2, window.innerWidth, h);
+  const down = aspect < 1 ? viewInset.shift * PORTRAIT_SHIFT * h : 0;
+  if (viewInset.bottom > 0 || down > 0) camera.setViewOffset(window.innerWidth, h, 0, viewInset.bottom / 2 - down, window.innerWidth, h);
   else camera.clearViewOffset();
   camera.updateProjectionMatrix();
 }

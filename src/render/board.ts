@@ -3,7 +3,7 @@ import {
   Vector2, Vector3, type Node as TslNode,
 } from 'three/webgpu';
 import {
-  abs, clamp, cos, exp, float, floor, fract, fwidth, max, min, mix, sin, smoothstep, texture, uniform, vec2, vec3,
+  abs, clamp, exp, float, floor, fract, fwidth, max, min, mix, sin, smoothstep, texture, uniform, vec2, vec3,
 } from 'three/tsl';
 import { simTime as time } from './clock';
 import { tune } from '../config/tunables';
@@ -79,16 +79,23 @@ export function createBoard(initialSize: number) {
     torpFrom: uniform(new Vector2(0, 0)),
     torpTo: uniform(new Vector2(0, 0)),
     torpT: uniform(-1),
-    /** Quarter turns that keep cell letters upright for the current camera. */
-    glyphTurn: uniform(0),
+    /** The camera's right and forward (away from it) directions on the water, and the sine of its tilt: they turn each ship's letters to read along its length. */
+    camRight: uniform(new Vector2(1, 0)),
+    camFwd: uniform(new Vector2(0, -1)),
+    sinTilt: uniform(0.8),
   };
 
-  /** Set a cell's state, its letter (A–Z or '' for none) and whether it belongs to the current target. */
-  function setCell(col: number, row: number, state: CellState, letter = '', target = false) {
+  /**
+   * Set a cell's state, its letter (A–Z or '' for none), whether it belongs to the current
+   * target, whether its letter is confirmed by a torpedo (else it is only a radar return)
+   * and the direction its ship's word runs across the grid (one step: -1, 0 or 1 each way).
+   */
+  function setCell(col: number, row: number, state: CellState, letter = '', target = false, confirmed = false, dir: [number, number] = [1, 0]) {
     const i = (row * MAX_BOARD + col) * 4;
     data[i] = state;
     data[i + 1] = letter ? letter.toUpperCase().charCodeAt(0) - 64 : 0;
-    data[i + 2] = target ? 1 : 0;
+    data[i + 2] = (target ? 1 : 0) | (confirmed ? 2 : 0);
+    data[i + 3] = (dir[0] + 1) * 3 + (dir[1] + 1) + 1;
     stateTex.needsUpdate = true;
   }
 
@@ -116,28 +123,47 @@ export function createBoard(initialSize: number) {
     const letter = px.g.mul(255).add(0.5).floor();
     const isMiss = st.equal(1).select(float(1), float(0));
     const isHit = st.equal(2).select(float(1), float(0)).add(st.equal(4).select(float(1), float(0)));
-    const isTarget = px.b.greaterThan(0.5).select(float(1), float(0));
+    const flags = px.b.mul(255).add(0.5).floor();
+    const isTarget = flags.mod(2).greaterThan(0.5).select(float(1), float(0));
+    const confirmed = flags.div(2).floor().mod(2).greaterThan(0.5).select(float(1), float(0));
+    const hidden = st.equal(0).select(float(1), float(0));
 
     // X mark inside revealed empty-water cells.
     const d = min(abs(f.x.sub(f.y)), abs(f.x.add(f.y).sub(1)));
     const box = smoothstep(0.24, 0.2, max(abs(f.x.sub(0.5)), abs(f.y.sub(0.5))));
     const xMark = smoothstep(aa.add(0.05), float(0.035), d).mul(box).mul(isMiss);
 
-    // The cell's letter, from the atlas, turned to stay upright on screen.
-    const q = vec2(f.x.sub(0.5), float(0.5).sub(f.y));
-    const ang = u.glyphTurn.mul(Math.PI / 2);
-    const r = vec2(q.x.mul(cos(ang)).sub(q.y.mul(sin(ang))), q.x.mul(sin(ang)).add(q.y.mul(cos(ang)))).add(0.5);
+    // The cell's letter, from the atlas. It is turned to read along its ship's length as seen on
+    // screen, left to right or top to bottom, never upside down; the angle is free, not a quarter turn.
+    const code = px.a.mul(255).add(0.5).floor().sub(1);
+    const axis = vec2(floor(code.div(3)).sub(1), code.mod(3).sub(1)).normalize();
+    const onScreen = (g: TslNode<'vec2'>) => vec2(g.dot(u.camRight), g.dot(u.camFwd).mul(u.sinTilt));
+    const flip = onScreen(axis).y.sub(onScreen(axis).x).greaterThanEqual(0).select(float(-1), float(1));
+    const base2 = axis.mul(flip);
+    const screenBase = onScreen(base2);
+    const screenUp = vec2(screenBase.y.negate(), screenBase.x);
+    const side = vec2(base2.y.negate(), base2.x);
+    const upGround = side.mul(onScreen(side).dot(screenUp).greaterThan(0).select(float(1), float(-1)));
+    const at = vec2(f.x.sub(0.5), f.y.sub(0.5));
+    const gu = at.dot(base2);
+    const gv = at.dot(upGround);
+    const r = vec2(gu, gv).add(0.5);
     const slot = letter.sub(1);
     const sx = slot.mod(ATLAS_COLS);
     const sy = floor(slot.div(ATLAS_COLS));
     const auv = vec2(sx.add(r.x).div(ATLAS_COLS), float(1).sub(sy.add(float(1).sub(r.y)).div(ATLAS_ROWS)));
-    const glyph = texture(atlas, auv).a.mul(letter.greaterThan(0.5).select(float(1), float(0))).mul(isHit.add(isTarget).min(1)).mul(inside);
+    const inGlyph = smoothstep(0.5, 0.46, max(abs(gu), abs(gv)));
+    const glyph = texture(atlas, auv).a.mul(letter.greaterThan(0.5).select(float(1), float(0))).mul(isHit.add(isTarget).min(1)).mul(inside).mul(inGlyph);
+    // Confirmed letters are black on yellow; radar returns are faint: a dim cell and a letter at 30%.
+    const glyphSure = glyph.mul(confirmed);
+    const glyphRadar = glyph.mul(float(1).sub(confirmed));
 
     const inset = smoothstep(0.02, 0.07, edge);
     const pulse = sin(time.mul(3.2)).mul(0.5).add(0.5);
-    const targetFill = isTarget.mul(pulse.mul(0.25).add(0.3));
-    const fill = isMiss.mul(0.55).add(isHit.mul(0.5).mul(float(1).sub(isTarget))).add(targetFill).mul(inset).mul(inside);
-    const fillColor = mix(mix(BOARD_COLORS.miss, BOARD_COLORS.hit, isHit), BOARD_COLORS.target, isTarget);
+    const targetFill = isTarget.mul(hidden).mul(pulse.mul(0.25).add(0.3));
+    const radarCell = isMiss.add(isHit).min(1).mul(float(1).sub(confirmed));
+    const fill = radarCell.mul(0.2).add(isHit.mul(confirmed).mul(0.92)).add(targetFill).mul(inset).mul(inside);
+    const fillColor = mix(mix(BOARD_COLORS.miss, BOARD_COLORS.hit, isHit), BOARD_COLORS.target, max(isTarget, confirmed));
 
     // Sonar ring around the submarine and the blast shock ring.
     const sd = base.sub(u.sonarCenter).length();
@@ -171,14 +197,15 @@ export function createBoard(initialSize: number) {
     const lines = line.mul(0.55).add(frame).mul(inside).mul(u.lineGlow);
     const emissive = BOARD_COLORS.line.mul(lines)
       .add(fillColor.mul(fill.mul(0.9)).mul(inside))
-      .add(vec3(1, 1, 1).mul(xMark.mul(1.3)).mul(inside))
-      .add(vec3(1.0, 0.97, 0.9).mul(glyph.mul(1.5)).mul(inside))
+      .add(vec3(1, 1, 1).mul(xMark.mul(0.39)).mul(inside))
+      .add(vec3(1.0, 0.97, 0.9).mul(glyphRadar.mul(0.45)).mul(inside))
       .add(BOARD_COLORS.sonar.mul(sonar))
       .add(BOARD_COLORS.sonar.mul(ping))
       .add(BOARD_COLORS.torpedo.mul(torp))
       .add(BOARD_COLORS.blast.mul(blast));
-    const tint = clamp(fill.add(lines.mul(0.3)).add(glyph.mul(0.6)), 0, 0.9);
-    return { tint, tintColor: mix(fillColor, vec3(1, 1, 1), glyph), emissive };
+    const dark = emissive.mul(float(1).sub(glyphSure));
+    const tint = clamp(fill.add(lines.mul(0.3)).add(glyphRadar.mul(0.18)).add(glyphSure.mul(0.95)), 0, 0.95);
+    return { tint, tintColor: mix(mix(fillColor, vec3(1, 1, 1), glyphRadar), vec3(0.02, 0.02, 0.02), glyphSure), emissive: dark };
   }
 
   /** World position of a cell centre (col → x, row → z). */
@@ -186,9 +213,12 @@ export function createBoard(initialSize: number) {
     return out.set(col - size / 2 + 0.5, 0, row - size / 2 + 0.5);
   }
 
-  /** Keep letters upright: snap the camera's azimuth to quarter turns. */
-  function faceCamera(azimuthDeg: number) {
-    u.glyphTurn.value = ((Math.round(-azimuthDeg / 90) % 4) + 4) % 4;
+  /** Tell the letters which way the camera looks (azimuth and tilt in degrees), so they can turn to read along their ships. */
+  function faceCamera(azimuthDeg: number, tiltDeg = 52) {
+    const az = (azimuthDeg * Math.PI) / 180;
+    u.camRight.value.set(Math.cos(az), -Math.sin(az));
+    u.camFwd.value.set(-Math.sin(az), -Math.cos(az));
+    u.sinTilt.value = Math.max(0.2, Math.sin((tiltDeg * Math.PI) / 180));
   }
 
   /** Switch to an n × n board (the cells are cleared). */
