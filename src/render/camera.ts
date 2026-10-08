@@ -16,6 +16,11 @@ const MAX_TILT = 82;
 const ZOOM_MIN = 0.55;
 const ZOOM_MAX = 1.35;
 const ZOOM_STEP = 0.8;
+/** Portrait phones may zoom in a quarter closer than the other layouts. */
+const PORTRAIT_ZOOM_MIN = 0.75;
+/** Portrait framing: cells of sea kept around the board for its labels, and the share of the half-width the board may fill. */
+const FIT_MARGIN = 0.7;
+const FIT_FILL = 0.96;
 const ROTATE_STEP_DEG = 90;
 
 /**
@@ -95,7 +100,44 @@ export function createCamera(aspect: number) {
   // The framing is tuned for a 10×10 board; other sizes scale the distance (and the look-at point) to match.
   let sizeScale = 1;
   let baseDistance = distance;
-  const clampDist = (d: number) => MathUtils.clamp(d, baseDistance * ZOOM_MIN, baseDistance * ZOOM_MAX);
+  let boardN = 10;
+  /** Portrait screens frame the whole board across the width, centred on its midpoint. */
+  const portrait = () => !view && camera.aspect < 1;
+  const probe = new PerspectiveCamera();
+  /** The distance at which the board's corners (and a margin for its labels) just fit the screen's width, at the home heading and tilt. */
+  function fitDistance(): number {
+    probe.fov = camera.fov;
+    probe.aspect = camera.aspect;
+    probe.updateProjectionMatrix();
+    const half = boardN / 2 + FIT_MARGIN;
+    const az = MathUtils.degToRad(homeAz);
+    const el = MathUtils.degToRad(homeEl);
+    const look = new Vector3(0, tune.get<number>('camera.targetY'), 0);
+    const corner = new Vector3();
+    let d = 25;
+    for (let i = 0; i < 5; i++) {
+      probe.position.set(
+        look.x + d * Math.cos(el) * Math.sin(az), look.y + d * Math.sin(el), look.z + d * Math.cos(el) * Math.cos(az),
+      );
+      probe.lookAt(look);
+      probe.updateMatrixWorld();
+      let wide = 0;
+      for (const [x, z] of [[-half, -half], [-half, half], [half, -half], [half, half]]) {
+        wide = Math.max(wide, Math.abs(corner.set(x, 0, z).project(probe).x));
+      }
+      d *= wide / FIT_FILL;
+    }
+    return d;
+  }
+  /** The framing's distance and look-at depth for the current board size and screen. */
+  function framing() {
+    const tuned = tune.get<number>('camera.distance') * sizeScale;
+    return portrait()
+      ? { dist: fitDistance(), z: 0, closest: tuned * ZOOM_MIN * PORTRAIT_ZOOM_MIN }
+      : { dist: tuned, z: tune.get<number>('camera.targetZ') * sizeScale, closest: tuned * ZOOM_MIN };
+  }
+  let closest = baseDistance * ZOOM_MIN;
+  const clampDist = (d: number) => MathUtils.clamp(d, closest, baseDistance * ZOOM_MAX);
   const controls = {
     /**
      * Frame an n × n board: smaller boards come closer so the cells are bigger,
@@ -104,8 +146,11 @@ export function createCamera(aspect: number) {
      */
     setBoardSize: (n: number, instant = false) => {
       sizeScale = n <= 10 ? n / 10 : 1 + (n / 10 - 1) * 0.93;
-      baseDistance = tune.get<number>('camera.distance') * sizeScale;
-      center.set(0, tune.get<number>('camera.targetY'), tune.get<number>('camera.targetZ') * sizeScale);
+      boardN = n;
+      const f = framing();
+      baseDistance = f.dist;
+      closest = f.closest;
+      center.set(0, tune.get<number>('camera.targetY'), f.z);
       focus = null;
       target.copy(center);
       if (instant) { distance = baseDistance; goal.dist = null; place(); }
@@ -139,7 +184,19 @@ export function createCamera(aspect: number) {
     /** The vertical field of view and aspect, for shots composed by screen position. */
     lens: () => ({ fov: camera.fov, aspect: camera.aspect }),
     /** Re-fit the view (after the HUD's docked area changes size). */
-    refit: () => fitFov(camera, camera.aspect),
+    refit: () => {
+      fitFov(camera, window.innerWidth / window.innerHeight);
+      if (!portrait()) return;
+      // The fit follows the field of view, which the docked keyboard changes; keep the player's zoom in proportion.
+      const f = framing();
+      const k = f.dist / baseDistance;
+      baseDistance = f.dist;
+      closest = f.closest;
+      if (script) script.restore.dist *= k;
+      else distance *= k;
+      if (goal.dist !== null) goal.dist *= k;
+      place();
+    },
     /** Turn the board by a quarter turn (negative: the other way). */
     rotate: (dir: 1 | -1 = 1) => { if (locked) return; endShot(); goal.rate = 6; goal.az = (goal.az ?? orbit.az) + dir * ROTATE_STEP_DEG; },
     /** Zoom in (factor < 1) or out (> 1); successive presses compound. */
@@ -202,9 +259,11 @@ export function createCamera(aspect: number) {
 
   if (!view) {
     tune.onAny(['camera.distance', 'camera.targetY', 'camera.targetZ'], () => {
-      distance = baseDistance = tune.get<number>('camera.distance') * sizeScale;
+      const f = framing();
+      distance = baseDistance = f.dist;
+      closest = f.closest;
       goal.dist = null;
-      center.set(0, tune.get('camera.targetY'), tune.get<number>('camera.targetZ') * sizeScale);
+      center.set(0, tune.get('camera.targetY'), f.z);
       if (!focus && !script) target.copy(center);
       place();
     });

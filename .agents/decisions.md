@@ -229,3 +229,12 @@ Append-only. Close an entry by changing its status; never delete one.
   stores it per device, so later loads start there.
 - **Why:** The user: the iPhone holds 60 fps but looks blurry at 0.7×. Letting the controller find the level beats a
   fixed guess for every phone; a remembered start avoids searching (and the buffer reallocations) on every load.
+
+## 2026-10-09 · Portrait frames the whole board by fitting its corners; the split keyboard is landscape-phone only
+- **Status:** active
+- **Decision:** On screens narrower than tall the camera distance is solved so the board's corners (plus 0.7 cell for
+  labels) fill 96% of the width at the home heading and tilt, centred on the board's midpoint; zoom-in may go 25%
+  closer than the old limit. The split keyboard shows only on landscape phones (the old split on desktop is gone).
+- **Why:** The user: the default framing centred on the sub and cropped the board's left corner; a split keyboard
+  only helps thumbs on a landscape phone. Reading "landscape" as landscape phones is my call; desktop gets the single block.
+

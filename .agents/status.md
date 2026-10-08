@@ -67,6 +67,11 @@ Open from phase 0 (scheduled as phase 2, visual and performance pass):
 - **Phase 2 visual fixes (2026-10-08, awaiting review):** sun glare rolls off softly on the water (`sea.glare`, 0.7);
   wreck debris rides the swell and goes under as it lands; the sub churns a short stern wash while it turns; a hit
   makes a ship heel and shudder (it used to drop 0.08 cells at once).
+- **Phone portrait pass (2026-10-09, awaiting device check):** main menu logo 5vh from the top, buttons 10vh from the bottom;
+  the camera frames the board's midpoint and fits its corners across the width (`fitDistance` in `src/render/camera.ts`,
+  re-fit when the docked keyboard changes the field of view), zooming in 25% closer than before; landscape and desktop
+  framing unchanged. The keyboard is one standard QWERTY block everywhere except landscape phones, where it splits (B on
+  the right, word row above the right half). Word row 20% bigger; keys spaced the same all round (`--kg`).
 - **Known gaps:** weathering reads as dots up close; the wreck stops burning once the explosion's fire is gone; the
   sub (about 2.4 cells long) overlaps a ship in the next cell when it turns to aim; the diorama sub's wake is straight
   while its path curves.

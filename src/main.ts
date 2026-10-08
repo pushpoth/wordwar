@@ -3,7 +3,7 @@ import { createBoard } from './render/board';
 import { createHulls } from './render/hulls';
 import { SEA } from './render/waves';
 import { installGestures } from './game/gestures';
-import { createCamera, fitFov } from './render/camera';
+import { createCamera } from './render/camera';
 import { isPaused, pinnedTime, setPaused, simTime, tickClock } from './render/clock';
 import { createOcean } from './render/ocean';
 import { createPost } from './render/post';
@@ -95,7 +95,7 @@ async function boot() {
 
   window.addEventListener('resize', () => {
     renderer.setSize(window.innerWidth, window.innerHeight);
-    fitFov(camera, window.innerWidth / window.innerHeight);
+    controls.refit();
   });
 
   const state: NonNullable<Window['__ww']> = { backend, frames: 0, fps: 0 };

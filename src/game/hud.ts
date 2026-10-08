@@ -47,13 +47,19 @@ export type MenuView = {
 };
 
 /**
- * QWERTY split in two like a tablet's split keyboard. Each half is a grid of
- * half-key columns; a row starts at a column so the stagger matches a real keyboard.
+ * The keyboard: one standard QWERTY block, or (on a landscape phone) split in two like a tablet's
+ * split keyboard. Each block is a grid of half-key columns; a row starts at a column so the stagger
+ * matches a real keyboard. B sits on the right half.
  */
-const KEY_HALVES = [
-  { cls: 'kl', cols: 13, rows: [['QWERT', 1], ['ASDFG', 2], ['ZXCVB', 4]] },
-  { cls: 'kr', cols: 10, rows: [['YUIOP', 1], ['HJKL', 2], ['NM', 4]] },
+const KEYS_STANDARD = [
+  { cls: 'ks', cols: 20, rows: [['QWERTYUIOP', 1], ['ASDFGHJKL', 2], ['ZXCVBNM', 4]] },
 ] as const;
+const KEYS_SPLIT = [
+  { cls: 'kl', cols: 13, rows: [['QWERT', 1], ['ASDFG', 2], ['ZXCV', 4]] },
+  { cls: 'kr', cols: 10, rows: [['YUIOP', 1], ['HJKL', 2], ['BNM', 1]] },
+] as const;
+/** Where the split layout applies: landscape on a phone. */
+const SPLIT_QUERY = '(max-height: 520px) and (orientation: landscape)';
 
 /** The brand mark, as on the loading screen. */
 const LOGO = '<div class="logo">WORD <span>WAR</span></div>';
@@ -111,30 +117,46 @@ export function createHud() {
   const keys = word.querySelector('.keys')!;
   const keyEls = new Map<string, HTMLElement>();
   let letterFn: (letter: string) => void = () => {};
-  for (const half of KEY_HALVES) {
-    const block = el('div', `kb ${half.cls}`);
-    for (const [letters, start] of half.rows) {
-      const r = el('div', 'row');
-      r.style.gridTemplateColumns = `repeat(${half.cols}, 1fr)`;
-      [...letters].forEach((k, i) => {
-        const b = el('button', 'key', k);
-        b.type = 'button';
-        b.style.gridColumn = `${start + i * 2} / span 2`;
-        b.setAttribute('aria-label', `Letter ${k}`);
-        // Pointer-down fires at once (a click waits for release); keep focus off the key
-        // so Space and Enter can't re-press it.
-        b.addEventListener('pointerdown', (e) => {
-          e.preventDefault();
-          letterFn(k);
-          flash(k);
+  let tried = new Map<string, boolean>();
+  function buildKeys(split: boolean) {
+    keys.replaceChildren();
+    keyEls.clear();
+    for (const half of split ? KEYS_SPLIT : KEYS_STANDARD) {
+      const block = el('div', `kb ${half.cls}`);
+      for (const [letters, start] of half.rows) {
+        const r = el('div', 'row');
+        r.style.gridTemplateColumns = `repeat(${half.cols}, 1fr)`;
+        [...letters].forEach((k, i) => {
+          const b = el('button', 'key', k);
+          b.type = 'button';
+          b.style.gridColumn = `${start + i * 2} / span 2`;
+          b.setAttribute('aria-label', `Letter ${k}`);
+          // Pointer-down fires at once (a click waits for release); keep focus off the key
+          // so Space and Enter can't re-press it.
+          b.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+            letterFn(k);
+            flash(k);
+          });
+          r.appendChild(b);
+          keyEls.set(k, b);
         });
-        r.appendChild(b);
-        keyEls.set(k, b);
-      });
-      block.appendChild(r);
+        block.appendChild(r);
+      }
+      keys.appendChild(block);
     }
-    keys.appendChild(block);
+    paintKeys();
   }
+  function paintKeys() {
+    for (const [k, e] of keyEls) {
+      const t = tried.get(k);
+      e.classList.toggle('hit', t === true);
+      e.classList.toggle('miss', t === false);
+    }
+  }
+  const splitMq = window.matchMedia(SPLIT_QUERY);
+  splitMq.addEventListener('change', () => buildKeys(splitMq.matches));
+  buildKeys(splitMq.matches);
 
   /** Pulse a key, for presses on the physical keyboard as well as taps. */
   function flash(letter: string) {
@@ -165,16 +187,13 @@ export function createHud() {
       ? v.target.map((l) => (l.state === 1 ? `<b>${l.ch}</b>` : l.state > 0 ? `<em>${l.ch}</em>` : '<b>_</b>')).join('')
       : '—';
     word.querySelector('.len')!.textContent = v.target ? `${v.target.length} letters` : '';
-    for (const [k, e] of keyEls) {
-      const t = v.tried.get(k);
-      e.classList.toggle('hit', t === true);
-      e.classList.toggle('miss', t === false);
-    }
+    tried = v.tried;
+    paintKeys();
 
     mode.className = `panel mode ${v.mode === 'TORPEDO' ? 'torpedo' : 'radar'}`;
     mode.querySelector('.value')!.textContent = v.mode === 'TORPEDO' ? 'TORPEDO' : 'RADAR';
     mode.querySelector('.hint')!.textContent = v.mode === 'TORPEDO'
-      ? 'Type every letter (amber = radar hint) · Tab next target · Esc radar'
+      ? 'Type every letter · Tab next target · Esc radar'
       : 'Type a letter to ping · ← → ↑ ↓ camera';
   }
 
