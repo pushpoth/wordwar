@@ -56,3 +56,12 @@ happened, and what to do about it.
   frame rate (`?dpr=` pins it), models merged to one draw per node with a
   shared vertex-attribute material (343 → 117 draws in the demo scene), idle
   explosions hidden, ocean 140→90 cells and 360→256 segments, 60 fps cap (`?fps=`).
+
+## 2026-10-08 · Headless captures restarted mid-run after an edit
+- **Status:** worked around
+- With `npm run dev` running, a capture started a few seconds after editing a source file sometimes reloaded part
+  way through (Vite's full reload landing late). With the URL's `?level=` already used up, the reload showed the
+  title, which looked like a boot bug. Wait for the reload before capturing, or capture against a build.
+- Also: the chrome-devtools MCP can't start here (no Chrome at `/opt/google/chrome`); captures use the bundled
+  `@sparticuz/chromium` as `npm run screenshot` does. In dev, `window.__ww.time` gives scene time and
+  `window.__ww.hold(true|false)` freezes it, so a script can shoot a moment of a sequence exactly.

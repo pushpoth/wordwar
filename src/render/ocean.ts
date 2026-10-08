@@ -1,8 +1,8 @@
-import { Mesh, MeshStandardNodeMaterial, PlaneGeometry, Vector4, type Node as TslNode, type Vector3 } from 'three/webgpu';
+import { Mesh, MeshStandardNodeMaterial, PlaneGeometry, Vector4, type Node as TslNode, type Texture, type Vector3 } from 'three/webgpu';
 import {
-  cameraPosition, clamp, cos, dot, float, max, mix, normalize,
+  cameraPosition, clamp, cos, dot, float, max, mix, normalize, output, pmremTexture,
   positionGeometry, positionWorld, pow, sin, smoothstep, texture, transformNormalToView, uniform,
-  uniformArray, vec2, vec3, vertexStage,
+  uniformArray, vec2, vec3, vec4, vertexStage,
 } from 'three/tsl';
 import { noiseTexture } from './util/noise-texture';
 import { tune } from '../config/tunables';
@@ -59,10 +59,33 @@ function gerstner(p: Node2, calm: Node, sea: Node) {
 }
 
 
-export function createOcean(sunDir: Vector3, opts: { board?: Board; hulls?: Hulls } = {}, extent = 90, segments = tune.get('quality.oceanSegments')) {
-  const { board, hulls } = opts;
-  const geo = new PlaneGeometry(extent, extent, segments, segments);
+/** The detailed sea's half-width, and how far the open sea beyond it reaches (cells). */
+const NEAR_SEA = 40;
+const FAR_SEA = 700;
+
+/**
+ * The sea's grid: the middle 86% of the vertices cover the detailed sea at an
+ * even spacing; the rest stretch, ever wider, out to the far field so the
+ * water meets the sky at the horizon from any height.
+ */
+function seaGrid(segments: number) {
+  const geo = new PlaneGeometry(2, 2, segments, segments);
   geo.rotateX(-Math.PI / 2);
+  const k = 0.86;
+  const warp = (v: number) => {
+    const a = Math.abs(v);
+    const r = a <= k ? (a / k) * NEAR_SEA : NEAR_SEA + ((a - k) / (1 - k)) ** 2.6 * (FAR_SEA - NEAR_SEA);
+    return Math.sign(v) * r;
+  };
+  const pos = geo.getAttribute('position');
+  for (let i = 0; i < pos.count; i++) pos.setXYZ(i, warp(pos.getX(i)), 0, warp(pos.getZ(i)));
+  geo.computeBoundingSphere();
+  return geo;
+}
+
+export function createOcean(sunDir: Vector3, opts: { board?: Board; hulls?: Hulls; env?: Texture } = {}, segments = tune.get('quality.oceanSegments')) {
+  const { board, hulls, env } = opts;
+  const geo = seaGrid(segments);
 
   // Islands as ellipses: (x, z, radius x, radius z) plus heading (cos, sin).
   const islands = uniformArray(Array.from({ length: MAX_ISLANDS }, () => new Vector4(0, 0, -1, -1)), 'vec4');
@@ -105,7 +128,9 @@ export function createOcean(sunDir: Vector3, opts: { board?: Board; hulls?: Hull
   // vertex and interpolated rather than per pixel.
   const calmV: Node = hulls ? hulls.calm(base) : float(0);
   const shoreV = shoreAt(base);
-  m.positionNode = positionGeometry.add(gerstner(base, calmV, sea).disp).add(vec3(0, swashAt(shoreV), 0));
+  // Out past the detailed sea the vertices are too far apart to carry waves: the swell fades flat.
+  const swell = smoothstep(NEAR_SEA - 2, NEAR_SEA * 0.7, base.length());
+  m.positionNode = positionGeometry.add(gerstner(base, calmV, sea).disp.mul(swell)).add(vec3(0, swashAt(shoreV), 0));
   const calm = vertexStage(calmV) as unknown as Node;
   const shore = vertexStage(shoreV) as unknown as Node;
 
@@ -117,7 +142,7 @@ export function createOcean(sunDir: Vector3, opts: { board?: Board; hulls?: Hull
   const camDist = cameraPosition.sub(positionWorld).length();
   const near = smoothstep(55, 18, camDist);
   const rip = r1.mul(0.65).add(r2.mul(near.mul(0.35))).mul(ripple).mul(float(1).sub(calm.mul(0.5)));
-  const n = normalize(g.normal.add(vec3(rip.x, 0, rip.y)));
+  const n = normalize(mix(vec3(0, 1, 0), g.normal, smoothstep(NEAR_SEA * 2.5, NEAR_SEA, base.length())).add(vec3(rip.x, 0, rip.y)));
   m.normalNode = transformNormalToView(n);
 
   // Colour: deep → mid by swell height, → shallow near shore.
@@ -155,6 +180,14 @@ export function createOcean(sunDir: Vector3, opts: { board?: Board; hulls?: Hull
   const glow = shallow.mul(back.mul(crest).mul(0.12));
   m.emissiveNode = ov ? glow.add(ov.emissive) : glow;
 
+  // Far off, the water takes on the sky just above the horizon behind it (from the sky's
+  // reflection map), so the open sea meets the sky without a seam from any height.
+  const haze = env ? pmremTexture(env, normalize(positionWorld.sub(cameraPosition).mul(vec3(1, 0, 1)).add(vec3(0, 0.03, 0))), float(0)) : null;
+  if (haze) {
+    const far = smoothstep(70, 640, positionWorld.sub(cameraPosition).xz.length());
+    m.outputNode = vec4(mix(output.rgb, haze.rgb, far), output.a);
+  }
+
   const mesh = new Mesh(geo, m);
   mesh.receiveShadow = true;
   mesh.name = 'ocean';
@@ -176,7 +209,12 @@ export function createOcean(sunDir: Vector3, opts: { board?: Board; hulls?: Hull
 
   tune.on('sea.ripple', (v) => (ripple.value = v as number));
 
-  return { mesh, setIslands, update, uniforms: { sun, ripple, sea } };
+  /** The sky's reflection map was re-rendered (the sun moved). */
+  function setEnv(tex: Texture) {
+    if (haze) (haze as unknown as { value: Texture }).value = tex;
+  }
+
+  return { mesh, setIslands, update, setEnv, uniforms: { sun, ripple, sea } };
 }
 
 function color(hex: number): [number, number, number] {

@@ -75,8 +75,11 @@ export function mountTuner() {
     }
     if (group === 'Camera shots') {
       const play = (which: string) => () => window.dispatchEvent(new CustomEvent('ww:shot', { detail: which }));
-      folder.addButton({ title: '▶ Play opening shot' }).on('click', play('intro'));
-      folder.addButton({ title: '▶ Play kill shot' }).on('click', play('kill'));
+      folder.addButton({ title: '▶ Title sequence' }).on('click', play('title'));
+      folder.addButton({ title: '▶ Depart and start' }).on('click', play('depart'));
+      folder.addButton({ title: '▶ Mission start only' }).on('click', play('intro'));
+      folder.addButton({ title: '▶ Kill shot' }).on('click', play('kill'));
+      folder.addButton({ title: '▶ Drone kill shot' }).on('click', play('drone'));
     }
     folder.addButton({ title: `Reset ${group.toLowerCase()}` }).on('click', () => {
       tune.reset(knobs.map((k) => k.key));

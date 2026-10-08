@@ -28,7 +28,17 @@ const ROTATE_STEP_DEG = 90;
  * `rate` is how quickly the camera closes on the pose, per second (about 1.5 is
  * languid, 6 is a tight follow); `snap` jumps straight there.
  */
-export type Pose = { target?: { x: number; y?: number; z: number }; az?: number; el?: number; dist?: number; rate?: number; snap?: boolean };
+export type Pose = {
+  target?: { x: number; y?: number; z: number }; az?: number; el?: number; dist?: number; rate?: number; snap?: boolean;
+  /** Where the camera stands; with `target`, sets the heading, tilt and distance that put it there. */
+  eye?: { x: number; y: number; z: number };
+  /** The picture's fade to black (0 clear, 1 black) and the letterbox (0 open, 1 closed). */
+  fade?: number;
+  bars?: number;
+};
+
+/** A shot's fade and letterbox, reported to whatever draws them (see `ui/cinema.ts`). */
+export type Cinema = { fade: number; bars: number };
 
 /** A shot: asked for the pose at `t` seconds in, returns null when it is over. */
 export type Shot = (t: number) => Pose | null;
@@ -46,7 +56,8 @@ export function createCamera(aspect: number) {
         elevationDeg: tune.get('camera.elevation'), azimuthDeg: tune.get('camera.azimuth'),
         targetOffset: [0, tune.get('camera.targetY'), tune.get('camera.targetZ')] as [number, number, number],
       };
-  const camera = new PerspectiveCamera(c.fov, aspect, 0.5, 400);
+  // Far enough for the open sea out to the horizon (see the ocean's far field).
+  const camera = new PerspectiveCamera(c.fov, aspect, 0.5, 1000);
   const target = new Vector3(...c.targetOffset);
   /** Where the camera looks when nothing is in focus: the board's middle. */
   const center = target.clone();
@@ -67,6 +78,16 @@ export function createCamera(aspect: number) {
   /** A point (a revealed ship) the camera pans to and orbits around; null for the board's middle. */
   let focus: { x: number; z: number } | null = null;
   let script: { fn: Shot; t: number; restore: { az: number; el: number; dist: number } } | null = null;
+  /** The player can't move the camera while a cinematic owns it. */
+  let locked = false;
+  const cine: Cinema = { fade: 0, bars: 0 };
+  const onCinema = new Set<(c: Cinema) => void>();
+  const setCinema = (fade: number, bars: number) => {
+    if (fade === cine.fade && bars === cine.bars) return;
+    cine.fade = fade;
+    cine.bars = bars;
+    for (const fn of onCinema) fn(cine);
+  };
   const held = new Set<string>();
   const keys = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'];
   /** Where a button press or a gesture is easing the camera to; null when it isn't. */
@@ -103,19 +124,31 @@ export function createCamera(aspect: number) {
       orbit.vAz = orbit.vEl = 0;
     },
     /** The default framing for this board, for shots that end there. */
-    home: () => ({ az: homeAz, el: homeEl, dist: baseDistance }),
+    home: () => ({ target: { x: center.x, y: center.y, z: center.z }, az: homeAz, el: homeEl, dist: baseDistance }),
+    /** Where the camera is now. */
+    pose: () => ({ target: { x: target.x, y: target.y, z: target.z }, az: orbit.az, el: orbit.el, dist: distance }),
     get playing() { return script !== null; },
+    /** Jump a running shot to `t` seconds in. */
+    seek: (t: number) => { if (script) script.t = t; },
+    /** End a running shot now, easing back to its settling framing. */
+    stop: () => endShot(),
+    /** Ignore the player's camera controls (during cinematics). */
+    lock: (on: boolean) => { locked = on; if (on) { held.clear(); orbit.vAz = orbit.vEl = 0; } },
+    /** Turn to a heading (degrees), the short way round, at `rate`. */
+    turnTo: (az: number, rate: number) => { goal.rate = rate; goal.az = orbit.az + wrap180(az - orbit.az); },
+    /** The vertical field of view and aspect, for shots composed by screen position. */
+    lens: () => ({ fov: camera.fov, aspect: camera.aspect }),
     /** Re-fit the view (after the HUD's docked area changes size). */
     refit: () => fitFov(camera, camera.aspect),
     /** Turn the board by a quarter turn (negative: the other way). */
-    rotate: (dir: 1 | -1 = 1) => { endShot(); goal.rate = 6; goal.az = (goal.az ?? orbit.az) + dir * ROTATE_STEP_DEG; },
+    rotate: (dir: 1 | -1 = 1) => { if (locked) return; endShot(); goal.rate = 6; goal.az = (goal.az ?? orbit.az) + dir * ROTATE_STEP_DEG; },
     /** Zoom in (factor < 1) or out (> 1); successive presses compound. */
-    zoom: (factor: number) => { endShot(); goal.rate = 6; goal.dist = clampDist((goal.dist ?? distance) * factor); },
+    zoom: (factor: number) => { if (locked) return; endShot(); goal.rate = 6; goal.dist = clampDist((goal.dist ?? distance) * factor); },
     zoomIn: () => controls.zoom(ZOOM_STEP),
     zoomOut: () => controls.zoom(1 / ZOOM_STEP),
     /** A drag or pinch: move straight there, no easing. */
     nudge: (dAz: number, dEl: number, zoomFactor = 1) => {
-      if (endShot()) return; // the first touch just hands control back
+      if (locked || endShot()) return; // the first touch just hands control back
       goal.az = null;
       goal.el = null;
       goal.dist = null;
@@ -127,6 +160,7 @@ export function createCamera(aspect: number) {
     },
   };
   window.addEventListener('keydown', (e) => {
+    if (locked) return;
     if (!e.repeat) {
       if (e.key === '[') controls.rotate(-1);
       else if (e.key === ']') controls.rotate(1);
@@ -200,13 +234,29 @@ export function createCamera(aspect: number) {
       else {
         const k = p.snap ? 1 : 1 - Math.exp(-dt * (p.rate ?? 4));
         steered = !!p.target;
+        if (p.target && p.eye) {
+          // Standing at an eye point: the orbit that puts the camera there.
+          const ty = p.target.y ?? center.y;
+          const dx = p.eye.x - p.target.x;
+          const dy = p.eye.y - ty;
+          const dz = p.eye.z - p.target.z;
+          const d = Math.max(0.01, Math.hypot(dx, dy, dz));
+          p.dist = d;
+          p.el = MathUtils.radToDeg(Math.asin(dy / d));
+          p.az = MathUtils.radToDeg(Math.atan2(dx, dz));
+        }
         if (p.target) target.lerp(new Vector3(p.target.x, p.target.y ?? center.y, p.target.z), k);
         if (p.az !== undefined) orbit.az += wrap180(p.az - orbit.az) * k;
         if (p.el !== undefined) orbit.el += (p.el - orbit.el) * k;
         if (p.dist !== undefined) distance += (p.dist - distance) * k;
-        orbit.el = MathUtils.clamp(orbit.el, 18, MAX_TILT);
+        orbit.el = MathUtils.clamp(orbit.el, -60, 89);
+        setCinema(p.fade ?? cine.fade, p.bars ?? cine.bars);
         moved = true;
       }
+    }
+    // With no shot running, any leftover fade or letterbox clears.
+    if (!script && (cine.fade > 0 || cine.bars > 0)) {
+      setCinema(Math.max(0, cine.fade - dt * 2.5), Math.max(0, cine.bars - dt * 1.5));
     }
     if (!steered) {
       const want = focus ? { x: focus.x, y: center.y, z: focus.z } : center;
@@ -244,6 +294,8 @@ export function createCamera(aspect: number) {
     azimuth: () => orbit.az,
     /** Called with the camera distance whenever the camera moves. */
     onMove: (fn: (distance: number) => void) => onMove.add(fn),
+    /** Called whenever a shot changes the fade or the letterbox. */
+    onCinema: (fn: (c: Cinema) => void) => onCinema.add(fn),
   };
 }
 

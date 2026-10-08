@@ -1,15 +1,14 @@
 import { Group, type Object3D, type Vector3 } from 'three/webgpu';
 import type { Unit } from '../engine/types';
-import { loadModel } from '../render/assets';
+import { loadModel, REVEAL_BAND, revealCenter, setReveal } from '../render/assets';
 import type { Board } from '../render/board';
 import { createExplosion } from '../render/fx/explosion';
 import type { HullFootprint } from '../render/hulls';
 import { createWreck } from '../render/wreck';
-import { footprint, ride, type Floater } from '../scene/buoyancy';
+import { footprint, ride, wetness, type Floater } from '../scene/buoyancy';
 import { DESTROYER } from '../scene/diorama';
 import { shipClassFor } from '../config/ships';
 
-const RISE_SECONDS = 1.1;
 const SINK_SECONDS = 12;
 const BREAK_AFTER = 0.1;
 
@@ -21,15 +20,17 @@ type Ship = {
   cells: Vector3[];
   mid: Vector3;
   scale: number;
-  spawnedAt: number;
+  /** When the radar's reveal ring set out, and how fast it spreads (cells per second); none: shown whole. */
+  reveal?: { at: number; speed: number; reach: number };
   killedAt?: number;
   wreck?: ReturnType<typeof createWreck>;
   boom?: ReturnType<typeof createExplosion>;
 };
 
 /**
- * Enemy ships on the water: spawned when the radar first finds them (they rise
- * out of the deep), ridden on the swell, and broken up and sunk when killed.
+ * Enemy ships on the water: spawned when the radar first finds them (a ring
+ * spreading from the sub scans them in), ridden on the swell, and broken up
+ * and sunk when killed.
  * Explosions come from a small pre-built pool so the first kill doesn't stall
  * on shader compilation.
  */
@@ -46,7 +47,11 @@ export function createFleet(root: Group, board: Board) {
     return unit.coords.map((c) => board.cellCenter(c.x, c.y));
   }
 
-  async function spawn(unit: Unit, t: number) {
+  /**
+   * Put a ship on the water. With `reveal`, it is hidden until a ring that
+   * leaves `from` at time t, spreading at `speed` cells per second, sweeps over it.
+   */
+  async function spawn(unit: Unit, t: number, reveal?: { from: { x: number; z: number }; speed: number }) {
     if (ships.has(unit.id)) return;
     const cells = cellsOf(unit);
     const first = cells[0];
@@ -65,9 +70,16 @@ export function createFleet(root: Group, board: Board) {
     const floater: Floater = {
       obj: carrier, x: mid.x, z: mid.z, yaw: Math.atan2(-(last.z - first.z), last.x - first.x),
       hull: { halfLength: DESTROYER.halfLength * scale, halfBeam: DESTROYER.halfBeam * scale },
-      lift: -0.6,
     };
-    ships.set(unit.id, { unit, carrier, model, floater, cells, mid, scale, spawnedAt: t });
+    let rv: Ship['reveal'];
+    if (reveal) {
+      revealCenter.value.set(reveal.from.x, reveal.from.z);
+      // Fully shown once the ring (and its scan band) is past the far end of the hull.
+      const reach = Math.hypot(mid.x - reveal.from.x, mid.z - reveal.from.z) + floater.hull!.halfLength + REVEAL_BAND + 0.3;
+      rv = { at: t, speed: reveal.speed, reach };
+      setReveal(model, 0);
+    }
+    ships.set(unit.id, { unit, carrier, model, floater, cells, mid, scale, reveal: rv });
   }
 
   async function kill(unitId: string, t: number) {
@@ -95,8 +107,20 @@ export function createFleet(root: Group, board: Board) {
     const prints: HullFootprint[] = [];
     for (const [id, s] of ships) {
       if (!s.carrier) continue;
-      const rise = Math.min(1, (t - s.spawnedAt) / RISE_SECONDS);
-      let lift = -0.6 * (1 - rise * rise * (3 - 2 * rise));
+      let lift = 0;
+      // How much of the hull the reveal ring has passed: its foam comes with it.
+      let shown = 1;
+      if (s.reveal) {
+        const r = Math.max(0, (t - s.reveal.at) * s.reveal.speed);
+        const centre = s.reveal.reach - s.floater.hull!.halfLength - REVEAL_BAND - 0.3;
+        shown = Math.min(1, Math.max(0, (r - centre + s.floater.hull!.halfLength) / (2 * s.floater.hull!.halfLength)));
+        if (r >= s.reveal.reach) {
+          setReveal(s.model, null);
+          s.reveal = undefined;
+        } else {
+          setReveal(s.model, r);
+        }
+      }
       if (s.killedAt !== undefined) {
         const age = t - s.killedAt;
         if (s.boom) s.boom.age.value = age;
@@ -121,8 +145,8 @@ export function createFleet(root: Group, board: Board) {
       }
       s.floater.lift = lift;
       ride(s.floater, t, dt);
-      const p = footprint(s.floater);
-      if (p && (s.killedAt === undefined || t - s.killedAt < 8)) prints.push(p);
+      const p = footprint(s.floater, shown * wetness(lift, 1));
+      if (p && p.strength! > 0) prints.push(p);
     }
     for (const b of pool) b.update();
     const ages = pool.map((b) => b.age.value).filter((a) => a < 99);
@@ -178,6 +202,8 @@ export function createFleet(root: Group, board: Board) {
       };
     },
     has: (id: string) => ships.has(id),
+    /** True while the radar is still scanning a ship in (or its model is loading). */
+    revealing: (id: string) => { const s = ships.get(id); return !!s && (!s.carrier || !!s.reveal); },
     cells: (id: string) => ships.get(id)?.cells,
     mid: (id: string) => ships.get(id)?.mid,
     /** Shake a ship on a torpedo hit. */

@@ -1,10 +1,10 @@
-import { Scene } from 'three/webgpu';
+import { Scene, Vector3 } from 'three/webgpu';
 import { createBoard } from './render/board';
 import { createHulls } from './render/hulls';
 import { SEA } from './render/waves';
 import { installGestures } from './game/gestures';
 import { createCamera, fitFov } from './render/camera';
-import { isPaused, pinnedTime, simTime, tickClock } from './render/clock';
+import { isPaused, pinnedTime, setPaused, simTime, tickClock } from './render/clock';
 import { createOcean } from './render/ocean';
 import { createPost } from './render/post';
 import { createRenderer, resolution } from './render/renderer';
@@ -15,10 +15,11 @@ import { LOOK } from './config/look';
 import { TUNER_ENABLED, tune } from './config/tunables';
 import { preloadModels } from './render/assets';
 import { createLoader } from './ui/loader';
+import { createCinema } from './ui/cinema';
 
 declare global {
   interface Window {
-    __ww?: { backend: string; frames: number; fps: number; load?: Record<string, number> };
+    __ww?: { backend: string; frames: number; fps: number; time?: number; load?: Record<string, number>; hold?: (on: boolean) => void };
   }
 }
 
@@ -44,14 +45,15 @@ async function boot() {
   mark('renderer');
   loader.set(0.12, 'Lighting the sky');
   const scene = new Scene();
-  const { camera, target, update: updateCamera, azimuth, onMove, controls } = createCamera(window.innerWidth / window.innerHeight);
+  const { camera, target, update: updateCamera, azimuth, onMove, onCinema, controls } = createCamera(window.innerWidth / window.innerHeight);
   const sky = createSky(scene, renderer);
 
   SEA.state = Number(params.get('sea') ?? tune.get('sea.state'));
   tune.on('sea.state', (v) => (SEA.state = v as number));
   const board = createBoard(LOOK.board.size);
   const hulls = createHulls();
-  const ocean = createOcean(sky.sun, { board, hulls });
+  const ocean = createOcean(sky.sun, { board, hulls, env: sky.env() });
+  sky.onEnv(ocean.setEnv);
   scene.add(ocean.mesh);
 
   // Models: the bar advances as each one arrives.
@@ -68,7 +70,15 @@ async function boot() {
   ocean.setIslands(world.islands);
 
   const post = createPost(renderer, scene, camera, camera.position.distanceTo(target));
-  onMove((d) => post.setFocusDistance(d));
+  const look = new Vector3();
+  onMove((d) => {
+    post.setFocusDistance(d);
+    // Looking out level (the title, low shots) softens the horizon on the edge-blur tier.
+    const level = camera.getWorldDirection(look).y;
+    post.setHorizon(Math.min(1, Math.max(0, (level + 0.35) / 0.2)));
+  });
+  const cinema = createCinema();
+  onCinema((c) => cinema.set(c));
   sky.onSunMove((sun) => ocean.uniforms.sun.value.copy(sun));
 
   // Compile every shader the game can need before the first frame, so the
@@ -89,6 +99,8 @@ async function boot() {
   });
 
   const state: NonNullable<Window['__ww']> = { backend, frames: 0, fps: 0 };
+  // Dev only: freeze scene time (no menu) so capture scripts can shoot a moment without it running on.
+  if (TUNER_ENABLED) state.hold = (on) => setPaused(on);
   window.__ww = state;
   let acc = 0;
   let accFrames = 0;
@@ -124,6 +136,7 @@ async function boot() {
       }
     }
     state.frames++;
+    state.time = simTime.value;
     accFrames++;
     const now = performance.now();
     acc = now - lastStat;

@@ -1,7 +1,8 @@
 import {
-  BufferAttribute, Mesh, MeshStandardNodeMaterial, type BufferGeometry, type MeshStandardMaterial, type Object3D,
+  BufferAttribute, Mesh, MeshStandardNodeMaterial, Vector2, type BufferGeometry, type MeshStandardMaterial, type Object3D,
 } from 'three/webgpu';
-import { attribute } from 'three/tsl';
+import { attribute, float, fract, positionWorld, smoothstep, uniform, vec3 } from 'three/tsl';
+import { simTime } from './clock';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { wearFor, weathered } from './weathering';
@@ -16,7 +17,7 @@ const cache = new Map<string, Promise<Object3D>>();
  * Blender's baked ambient occlusion (vertex colour) darkens ambient and
  * environment light only, never the direct sun.
  */
-const surface = (() => {
+function makeSurface(reveal: boolean) {
   const m = new MeshStandardNodeMaterial();
   const base = attribute<'vec4'>('surfaceBase');
   const extra = attribute<'vec4'>('surfaceExtra');
@@ -28,8 +29,42 @@ const surface = (() => {
   m.emissiveNode = extra.yzw;
   m.aoNode = attribute<'vec4'>('color').r;
   m.name = 'model-surface';
+  if (reveal) {
+    // Each mesh carries its own reveal radius (userData.reveal; none means fully shown).
+    const radius = uniform(1e4).onObjectUpdate(({ object }) => (object?.userData.reveal as number | undefined) ?? 1e4);
+    const d = positionWorld.xz.sub(revealCenter).length();
+    const band = float(REVEAL_BAND);
+    // 0 well inside the radius, 1 at the scan front.
+    const front = smoothstep(radius.sub(band), radius, d);
+    // In the band the hull shows as scan lines that thin out toward the front.
+    const lines = fract(positionWorld.y.mul(16).add(d.mul(2)).sub(simTime.mul(4)));
+    m.maskNode = d.lessThan(radius).and(lines.greaterThan(front.mul(0.92)));
+    const glow = front.mul(d.lessThan(radius).select(float(1), float(0))).mul(2.4);
+    m.emissiveNode = extra.yzw.add(vec3(0.35, 1.0, 0.45).mul(glow));
+    m.name = 'model-surface-reveal';
+  }
   return m;
-})();
+}
+
+/** Where ship reveals spread from (the sub), and the width of the scan band at their front, in cells. */
+export const revealCenter = uniform(new Vector2());
+export const REVEAL_BAND = 0.9;
+const surface = makeSurface(false);
+/** The material for enemy ships, which the radar reveals with a growing ring (see `setReveal`). */
+const revealSurface = makeSurface(true);
+
+/**
+ * Switch a model to the reveal material (once) and set how far the reveal has
+ * spread from `revealCenter`; null shows it whole. Hidden parts cast no shadow.
+ */
+export function setReveal(model: Object3D, radius: number | null) {
+  model.traverse((o) => {
+    if (!(o instanceof Mesh)) return;
+    if (o.material === surface) o.material = revealSurface;
+    o.userData.reveal = radius ?? undefined;
+    o.castShadow = radius === null;
+  });
+}
 
 const KEEP = ['position', 'normal', 'color', 'surfaceBase', 'surfaceExtra', 'surfaceWear'];
 

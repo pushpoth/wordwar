@@ -64,9 +64,12 @@ Open from phase 0 (scheduled as phase 2, visual and performance pass):
   V and sink, fittings fly clear) only at the moment of the kill; billboard
   letters are matte paint with only the rim glowing; the sub turns about a
   forward pivot with drift.
-- **Known gaps:** the sun glare at low camera angles blows out to white; the
+- **Known gaps:** the sun glare at low camera angles blows out to white (very visible in the close kill shot); the
   sub's wake is straight while its path curves; weathering reads as dots up close;
   the wreck stops burning once the explosion's fire is gone.
+- **Next (user's order, 2026-10-08):** sun glare, sub and ship wake and animation, wreckage (pieces should start
+  sinking as they land on the water); then a steady frame rate on all devices (the iPhone holds 60 fps but looks
+  blurry at 0.7× resolution).
 - **Repo:** https://github.com/pushpoth/wordwar (private). The Vercel project
   builds every pushed branch; PR #1 holds phase 0. Work continues on `phase-1-gameplay`.
 - **Deploys:** pushing a branch to GitHub builds a Vercel preview (team
@@ -76,15 +79,20 @@ Open from phase 0 (scheduled as phase 2, visual and performance pass):
 - **Art gaps against the reference:** the islands still read as low-poly toys,
   ships lack weathering and wakes, and the smoke plume is light grey and faceted.
 
-Camera shots (2026-10-08, pulled forward from phase 3): the camera pans to the ship being targeted and
-orbits around it (`focusOn`); a new mission opens on a close, high shot of the sub surfacing, then settles to the
-board's default framing; the torpedo that sinks a ship gets a three-part shot (behind the sub with the ship in view,
-riding the torpedo in, then pulling back and circling the wreck). Shots live in `src/game/shots.ts` (pure, tested)
-and play through `view.play` in `src/render/camera.ts`. Any camera control from the player ends a shot softly.
-`?cine=0`, the tuner's "cinematic shots" knob and the system's reduced-motion setting turn them off; the screenshot
-script turns them off unless given `--cine`. The user found them good (2026-10-08). The tuner's "Camera shots" group sets every time, distance, tilt, heading and
-speed in them (`LOOK.shots` holds the defaults), with ▶ Play buttons for the opening and kill shots; paste "Copy changes"
-back to make new defaults.
+Cinematics (2026-10-08, pulled forward from phase 3; awaiting the user's review). A page load plays a title sequence
+(fade in high over the sea, descend to the sub surfacing, settle low beside its bow, letterbox opens) and shows the main
+menu top left (the logo at 66 px with the buttons centred under it; Continue when a mission is saved, New mission: mission 1 directly while it's the only one open, else
+the now-opaque mission list). Every mission start goes through a departure (letterbox, pull back, sub dives, fade to
+black) and a mission-start shot (in from high over the rising sub, on round to the default framing in one motion).
+Any key or tap skips the title or the mission start. New ships are scanned in by the ping ring (green scan band) and
+the camera turns broadside to the new target, sun behind when it isn't the long way round. Kill shots: the close one
+(behind the sub, soft zoom along the run, then circling the wreck) or, about one kill in five when the ship is 6+
+cells off, the drone shot (dip to black, bow close-up of the launch with a 3D torpedo, cut to a rising high view from
+behind the sub). Shots live in `src/game/shots.ts` (pure, tested) and play through `view.play`; the controller runs
+the phases (title, menu, depart, start, play). `?cine=0`, the tuner knob and reduced motion turn them off;
+`?seed=`/`?level=` go straight to a mission and are then removed from the URL; `?shot` skips them. The tuner's
+"Camera shots" group has every time, distance and angle, with ▶ buttons for each sequence. Bloom is at 15% (0.07)
+on desktop and off on phones. The sea now reaches the horizon (see `decisions.md`).
 
 Branches: `main` was merged from `phase-1-gameplay` on 2026-10-08 (the user asked, as a checkpoint; Vercel production
 builds from `main`). Day-to-day work still goes to `phase-1-gameplay`.

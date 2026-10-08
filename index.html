@@ -19,7 +19,7 @@
         color: #cfe7f5; background: rgba(4, 18, 28, 0.6); padding: 5px 8px; border-radius: 6px;
         pointer-events: none; white-space: pre;
       }
-      body.shot #hud-stats { display: none; }
+      body.shot #hud-stats, body:has(.hud.title-open) #hud-stats { display: none; }
       @media (max-width: 760px) and (orientation: portrait), (max-height: 520px) and (orientation: landscape) {
         #hud-stats { left: max(8px, env(safe-area-inset-left)); top: calc(max(8px, env(safe-area-inset-top)) + 148px); font-size: 9px; padding: 4px 6px; }
       }

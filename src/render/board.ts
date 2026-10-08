@@ -6,6 +6,7 @@ import {
   abs, clamp, cos, exp, float, floor, fract, fwidth, max, min, mix, sin, smoothstep, texture, uniform, vec2, vec3,
 } from 'three/tsl';
 import { simTime as time } from './clock';
+import { tune } from '../config/tunables';
 
 /** Base state of a cell (data texture red channel). */
 export const CELL = { hidden: 0, miss: 1, hit: 2, sunk: 4 } as const;
@@ -194,9 +195,10 @@ export function createBoard(initialSize: number) {
   function setSize(n: number) {
     size = n;
     u.size.value = n;
-    u.pingSpeed.value = (9 * n) / 10;
+    u.pingSpeed.value = (tune.get<number>('fx.pingSpeed') * n) / 10;
     clear();
   }
+  tune.on('fx.pingSpeed', (v) => (u.pingSpeed.value = ((v as number) * size) / 10));
 
   return { overlay, setCell, clear, cellCenter, faceCamera, setSize, uniforms: u, get size() { return size; } };
 }

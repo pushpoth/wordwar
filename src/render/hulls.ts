@@ -6,8 +6,12 @@ import { simTime as time } from './clock';
 import { MAX_HULLS } from '../config/limits';
 export { MAX_HULLS };
 
-/** A ship's footprint on the water: centre, heading (radians, 0 = +X), size and speed. */
-export type HullFootprint = { x: number; z: number; yaw: number; halfLength: number; halfBeam: number; speed: number };
+/**
+ * A ship's footprint on the water: centre, heading (radians, 0 = +X), size and
+ * speed, and how much it touches the water (0–1, default 1): a hull below the
+ * surface or not yet revealed makes no foam and calms no waves.
+ */
+export type HullFootprint = { x: number; z: number; yaw: number; halfLength: number; halfBeam: number; speed: number; strength?: number };
 
 type N1 = TslNode<'float'>;
 type N2 = TslNode<'vec2'>;
@@ -29,7 +33,7 @@ export function createHulls() {
       if (!h) { s[i].set(0, 0, 0, 0); continue; }
       // Heading convention matches the models: bow at +X, yaw about +Y.
       p[i].set(h.x, h.z, Math.cos(h.yaw), -Math.sin(h.yaw));
-      s[i].set(h.halfLength, h.halfBeam, h.speed, 1);
+      s[i].set(h.halfLength, h.halfBeam, h.speed, Math.min(1, Math.max(0, h.strength ?? 1)));
     }
   }
 

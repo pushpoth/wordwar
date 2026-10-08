@@ -26,6 +26,7 @@ export function createPost(renderer: WebGPURenderer, scene: Scene, camera: Camer
     edgeBlur: uniform(tune.get('post.edgeBlur')),
     edgeBand: uniform(tune.get('post.edgeBand')),
     edgeCenter: uniform(tune.get('post.edgeCenter')),
+    edgeRamp: uniform(0.28),
     vignette: uniform(tune.get('post.vignette')),
     saturation: uniform(tune.get('post.saturation')),
     warmth: uniform(tune.get('post.warmth')),
@@ -61,7 +62,7 @@ export function createPost(renderer: WebGPURenderer, scene: Scene, camera: Camer
     if (tune.get('post.edgeBlur') > 0) {
       const soft = gaussianBlur(hdr, 2.2, 4, { resolutionScale: 0.5 }) as unknown as N4;
       const off = abs(screenUV.y.sub(u.edgeCenter));
-      const mask = smoothstep(u.edgeBand, u.edgeBand.add(0.28), off).mul(u.edgeBlur).min(1);
+      const mask = smoothstep(u.edgeBand, u.edgeBand.add(u.edgeRamp), off).mul(u.edgeBlur).min(1);
       hdr = mix(hdr, soft, mask);
     }
     if (tune.get<boolean>('quality.bloom')) {
@@ -89,8 +90,8 @@ export function createPost(renderer: WebGPURenderer, scene: Scene, camera: Camer
   bind('post.dofRange', (v) => (u.focalLength.value = v));
   bind('post.dofBokeh', (v) => (u.bokeh.value = v));
   bind('post.focusOffset', (v) => (u.focus.value = baseFocus + v));
-  bind('post.edgeBand', (v) => (u.edgeBand.value = v));
-  bind('post.edgeCenter', (v) => (u.edgeCenter.value = v));
+  bind('post.edgeBand', () => setHorizon(horizon));
+  bind('post.edgeCenter', () => setHorizon(horizon));
   bind('post.vignette', (v) => (u.vignette.value = v));
   bind('post.saturation', (v) => (u.saturation.value = v));
   bind('post.warmth', (v) => (u.warmth.value = v));
@@ -99,11 +100,25 @@ export function createPost(renderer: WebGPURenderer, scene: Scene, camera: Camer
   bind('post.exposure', (v) => (renderer.toneMappingExposure = v));
   renderer.toneMappingExposure = tune.get('post.exposure');
 
+  /**
+   * How much the view looks out to the horizon (0 down at the board, 1 level):
+   * the edge blur's sharp band slides down and narrows so the horizon, a third
+   * of the way down the screen, goes soft. Depth of field does this by itself.
+   */
+  let horizon = 0;
+  function setHorizon(a: number) {
+    horizon = a;
+    const lerp = (x: number, y: number) => x + (y - x) * a;
+    u.edgeCenter.value = lerp(tune.get('post.edgeCenter'), 0.36);
+    u.edgeBand.value = lerp(tune.get('post.edgeBand'), 0.2);
+    u.edgeRamp.value = lerp(0.28, 0.1);
+  }
+
   /** The camera moved: keep the board in focus. */
   function setFocusDistance(d: number) {
     baseFocus = d;
     u.focus.value = d + tune.get('post.focusOffset');
   }
 
-  return { pipeline, uniforms: u, setFocusDistance };
+  return { pipeline, uniforms: u, setFocusDistance, setHorizon };
 }

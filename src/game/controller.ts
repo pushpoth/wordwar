@@ -8,7 +8,7 @@ import { createBoardLabels } from '../render/labels';
 import type { IslandShore } from '../render/ocean';
 import { viewInset, type CameraControls } from '../render/camera';
 import { createWordSign } from '../render/word-sign';
-import { footprint, ride, type Floater } from '../scene/buoyancy';
+import { footprint, ride, wetness, type Floater } from '../scene/buoyancy';
 import { SUB } from '../scene/diorama';
 import { addScenery } from '../scene/scenery';
 import { createFleet } from './fleet';
@@ -19,9 +19,13 @@ import { configFor, LEVELS, levelById, starsFor } from '../config/campaign';
 import { shipModels } from '../config/ships';
 import { createGame, DEFAULT_MISSION, restoreGame, type Game } from './game';
 import { createHud, type MenuAction } from './hud';
+import { createTorpedo } from '../render/torpedo';
 import { installKeyboard, type Intents } from './input';
 import { LOOK } from '../config/look';
-import { introShot, killShot, type IntroParams, type KillParams } from './shots';
+import {
+  bowOf, departSeconds, departShot, hash01, introSeconds, introShot, pickDrone, planKill, revealHeading, titleHeading,
+  titleSeconds, titleShot, type DepartParams, type IntroParams, type KillParams, type KillPlan, type SubPose, type TitleParams,
+} from './shots';
 import { currentLevel, isUnlocked, loadProgress, record, writeProgress } from './progress';
 import { clearSave, loadSave, writeSave } from './save';
 
@@ -32,6 +36,12 @@ const SUB_TURN_RATE = 0.7; // radians per second
 const smooth = (x: number) => x * x * (3 - 2 * x);
 
 type Scheduled = { at: number; run: () => void };
+
+/**
+ * Where the game is: the title sequence, the main menu, leaving for a
+ * mission, the mission-start shot, or playing. Only `play` takes game input.
+ */
+type Phase = 'title' | 'menu' | 'depart' | 'start' | 'play';
 
 /**
  * Runs a mission on the scene: turns keyboard input into engine actions and
@@ -70,6 +80,17 @@ export async function createController(scene: Scene, board: Board, hulls: Hulls,
     hull: { halfLength: SUB.halfLength * SUB.scale, halfBeam: SUB.halfBeam * SUB.scale },
   };
   let subHeading = 0.6;
+  const subHalf = SUB.halfLength * SUB.scale;
+  const subPose = (): SubPose => ({ x: subFloat.x, z: subFloat.z, yaw: subFloat.yaw, half: subHalf });
+  /** The sub's height animation: settling from one depth to another (0 is afloat). */
+  let subMove = { from: 0, to: 0, at: -99, seconds: 1 };
+  const subLift = (t: number) => subMove.from + (subMove.to - subMove.from) * smooth(Math.min(1, Math.max(0, (t - subMove.at) / subMove.seconds)));
+  /** Take the sub to `depth` (0 afloat, negative below) over `seconds`, from wherever it is now. */
+  const moveSub = (depth: number, seconds = 0) => { subMove = { from: subLift(now), to: depth, at: now, seconds: Math.max(0.001, seconds) }; };
+
+  const torpedo = createTorpedo();
+  root.add(torpedo.group);
+  let torpPath = { from: { x: 0, z: 0 }, to: { x: 0, z: 0 } };
 
   let game: Game;
   let sign: ReturnType<typeof createWordSign> | null = null;
@@ -80,15 +101,17 @@ export async function createController(scene: Scene, board: Board, hulls: Hulls,
   let pingStart = -99;
   let torpStart = -99;
   let torpRun = TORPEDO_RUN;
-  /** Set when a new mission starts; the opening shot plays once the game is running. */
-  let introPending = false;
+  let phase: Phase = 'play';
+  /** Cinematic steps (title, departure, mission start), on scene time; a skip or a new sequence clears them. */
+  let cues: Scheduled[] = [];
+  const cue = (delay: number, run: () => void) => cues.push({ at: now + delay, run });
   /** The camera-shot settings, read from the tuner each time a shot starts. */
   const shotParams = <T extends object>(prefix: string, defaults: T) =>
     Object.fromEntries(Object.keys(defaults).map((k) => [k, tune.get<number>(`${prefix}.${k}`)])) as T;
   const introParams = () => shotParams('shot.intro', LOOK.shots.intro) as IntroParams;
   const killParams = () => shotParams('shot.kill', LOOK.shots.kill) as KillParams;
-  let surface: { seconds: number; depth: number } = { seconds: LOOK.shots.intro.surface, depth: LOOK.shots.intro.depth };
-  let surfaceAt = -99;
+  const titleParams = () => shotParams('shot.title', LOOK.shots.title) as TitleParams;
+  const departParams = () => shotParams('shot.depart', LOOK.shots.depart) as DepartParams;
   let ended = false;
   let lastCamera: Camera | null = null;
   const ray = new Raycaster();
@@ -97,7 +120,8 @@ export async function createController(scene: Scene, board: Board, hulls: Hulls,
 
   /** A tap on the canvas: if it lands on a discovered enemy ship, aim at it. */
   function tap(clientX: number, clientY: number) {
-    if (!lastCamera || ended || isPaused() || hud.isMenuOpen()) return;
+    if (phase === 'title' || phase === 'start') return skip();
+    if (phase !== 'play' || !lastCamera || ended || isPaused() || hud.isMenuOpen()) return;
     ray.setFromCamera(new Vector2((clientX / innerWidth) * 2 - 1, -(clientY / innerHeight) * 2 + 1), lastCamera);
     if (!ray.ray.intersectPlane(water, hit)) return;
     const id = fleet.pick(hit.x, hit.z);
@@ -123,6 +147,8 @@ export async function createController(scene: Scene, board: Board, hulls: Hulls,
   }
 
   function persist() {
+    // The title's backdrop board is scenery, not a mission: it never overwrites a saved one.
+    if (phase !== 'play' && phase !== 'start') return;
     if (ended) clearSave();
     else writeSave(game.save());
   }
@@ -161,15 +187,10 @@ export async function createController(scene: Scene, board: Board, hulls: Hulls,
     subFloat.z = p.z;
     board.uniforms.sonarCenter.value.set(p.x, p.z);
     board.uniforms.sonarRadius.value = 1.6;
-    const url = new URL(location.href);
-    url.searchParams.set('seed', String(seed));
-    url.searchParams.delete('level');
-    if (game.state.config.id) url.searchParams.set('level', String(game.state.config.id));
-    history.replaceState(null, '', url);
-    introPending = !restored;
-    surfaceAt = restored ? -99 : Infinity;
+    moveSub(0);
+    torpStart = -99;
     view.focusOn(null);
-    hud.note(restored ? `MISSION RESTORED · SEED ${seed}` : `MISSION START · SEED ${seed}`);
+    if (phase !== 'title') hud.note(restored ? `MISSION RESTORED · SEED ${seed}` : `MISSION START · SEED ${seed}`);
     // A restored mission's ships are already on the water, not rising.
     syncBoard(restored ? now - 10 : now);
     syncHud();
@@ -282,10 +303,11 @@ export async function createController(scene: Scene, board: Board, hulls: Hulls,
     // The torpedo that sinks a ship gets a cinematic: the camera swings in behind the sub first,
     // the torpedo then runs slowly, and everything it triggers waits for the impact.
     const killed = events.find((e) => e.type === 'unit:destroyed') as Extract<EngineEvent, { type: 'unit:destroyed' }> | undefined;
-    const cine = !!killed && cinematics();
     const kp = killParams();
-    const lead = cine ? kp.lead : 0;
-    const run = cine ? kp.run : TORPEDO_RUN;
+    const plan = killed && cinematics() ? planKillFor(killed.unitId, kp) : null;
+    const cine = !!plan;
+    const lead = plan?.lead ?? 0;
+    const run = plan?.run ?? TORPEDO_RUN;
     const arrive = lead + run;
     for (const e of events) {
       switch (e.type) {
@@ -295,10 +317,18 @@ export async function createController(scene: Scene, board: Board, hulls: Hulls,
           hud.ping();
           break;
         case 'radar:resolved':
+          // New contacts go on the water now, hidden until the ping's ring sweeps over them.
+          for (const id of e.unitsDiscovered) {
+            const u = game.unit(id);
+            if (!u || discovered.includes(id)) continue;
+            discovered.push(id);
+            void fleet.spawn(u, pingStart, { from: { x: subFloat.x, z: subFloat.z }, speed: board.uniforms.pingSpeed.value });
+          }
           later(PING_TO_REVEAL, () => {
             hud.note(e.unitsDiscovered.length ? `CONTACT DETECTED · ${e.unitsDiscovered.length}` : e.tilesRevealed.length ? `${e.tilesRevealed.length} RETURNS · NO CONTACT` : 'NO RETURNS');
             syncBoard();
             syncHud();
+            if (e.unitsDiscovered.includes(game.state.activeUnitId ?? '')) faceTarget();
           });
           break;
         case 'radar:denied':
@@ -307,7 +337,7 @@ export async function createController(scene: Scene, board: Board, hulls: Hulls,
         case 'torpedo:fired':
           hud.note(`TORPEDO AWAY · ${e.letter}`);
           launchTorpedo(e.targetUnitId, lead, run);
-          if (cine) playKillShot(e.targetUnitId, kp);
+          if (plan) view.play(plan.shot);
           break;
         case 'torpedo:denied':
           hud.note(e.reason === 'already_tried' ? 'LETTER ALREADY TRIED' : e.reason === 'torpedoes_empty' ? 'OUT OF TORPEDOES' : 'MISSION OVER');
@@ -347,42 +377,201 @@ export async function createController(scene: Scene, board: Board, hulls: Hulls,
     persist();
   }
 
+  /** Fire the torpedo from the sub's bow: it leaves after `lead` seconds and takes `run` to arrive. */
   function launchTorpedo(unitId: string, lead = 0, run = TORPEDO_RUN) {
     const to = fleet.mid(unitId);
-    if (!to) return;
-    board.uniforms.torpFrom.value.set(subFloat.x, subFloat.z);
+    if (to) fireAt(to, lead, run);
+  }
+
+  function fireAt(to: { x: number; z: number }, lead: number, run: number) {
+    const from = bowOf(subPose());
+    torpPath = { from, to: { x: to.x, z: to.z } };
+    board.uniforms.torpFrom.value.set(from.x, from.z);
     board.uniforms.torpTo.value.set(to.x, to.z);
     torpStart = now + lead;
     torpRun = run;
   }
 
-  function playKillShot(unitId: string, params: KillParams) {
+  /** The kill shot for a ship: the drone shot about one kill in five when the ship is far enough off, else the close one. */
+  function planKillFor(unitId: string, kp: KillParams, force?: 'kill' | 'drone'): KillPlan | null {
     const u = game.unit(unitId);
-    if (!u) return;
-    view.play(killShot({ x: subFloat.x, z: subFloat.z }, unitMid(u), u.length, params));
+    if (!u) return null;
+    const ship = unitMid(u);
+    const bow = bowOf(subPose());
+    const roll = hash01(game.seed, game.state.units.indexOf(u) + 1);
+    const drone = force ? force === 'drone' : pickDrone(Math.hypot(ship.x - bow.x, ship.z - bow.z), roll, kp);
+    return planKill(subPose(), ship, u.length, drone, kp);
   }
 
-  function playIntro() {
-    const params = introParams();
-    surface = { seconds: params.surface, depth: params.depth };
-    surfaceAt = now;
-    view.play(introShot({ x: subFloat.x, z: subFloat.z }, view.home(), params), view.home());
+  /** A newly found target: turn to read its word broadside, with the sun behind the camera when that's not the long way round. */
+  function faceTarget() {
+    if (!cinematics() || !tune.get<boolean>('shot.reveal.turn') || view.playing) return;
+    const u = game.unit(game.state.activeUnitId);
+    if (!u || u.destroyed) return;
+    const a = board.cellCenter(u.coords[0].x, u.coords[0].y);
+    const b = board.cellCenter(u.coords[u.length - 1].x, u.coords[u.length - 1].y);
+    const az = revealHeading(view.pose().az, { x: b.x - a.x, z: b.z - a.z }, tune.get('sun.azimuth'), tune.get('shot.reveal.maxTurn'));
+    view.turnTo(az, tune.get('shot.reveal.rate'));
   }
 
-  // The tuner's "Play" buttons: run a shot on the spot, whatever the game is doing.
+  // ---- Cinematics: title, main menu, departure, mission start -----------------
+
+  /** The phone keyboard's docked height; the camera keeps clear of it only while playing. */
+  let dockPx = 0;
+  const applyInset = () => {
+    const px = phase === 'play' ? dockPx : 0;
+    if (viewInset.bottom === px) return;
+    viewInset.bottom = px;
+    view.refit();
+  };
+
+  /** Hand the game to the player. */
+  function beginPlay() {
+    cues = [];
+    phase = 'play';
+    hud.cine(false);
+    view.lock(false);
+    applyInset();
+  }
+
+  /** Enter a cinematic phase: the HUD steps aside and the camera is the shot's. */
+  function enterCinema(next: Phase) {
+    cues = [];
+    phase = next;
+    hud.cine(true);
+    view.lock(true);
+    applyInset();
+  }
+
+  /**
+   * First load: from the loading screen's dark, high over the sea and down to
+   * the sub as it surfaces, then the main menu. The board behind it is the
+   * current level's, without ships; it is never saved.
+   */
+  function title() {
+    enterCinema('title');
+    hud.menu(null);
+    start(randomSeed(), undefined, currentLevel(progress));
+    const tp = titleParams();
+    subHeading = subFloat.yaw = titleHeading(tune.get('sun.azimuth'), tp);
+    view.play(titleShot(subPose(), view.lens(), tp));
+    const menuAt = titleSeconds(tp) + tp.menuDelay;
+    if (!cinematics()) {
+      view.seek(menuAt + 2);
+      titleMenu();
+      return;
+    }
+    moveSub(-introParams().depth);
+    cue(tp.surfaceAt, () => moveSub(0, introParams().surface));
+    cue(menuAt, titleMenu);
+  }
+
+  /** The main menu, top right over the title view. */
+  function titleMenu() {
+    cues = [];
+    phase = 'menu';
+    moveSub(0, Math.max(0.001, -subLift(now) * 1.5));
+    const saved = loadSave();
+    const actions: MenuAction[] = [];
+    if (saved) {
+      actions.push({
+        label: 'Continue', key: 'Enter', sub: `${levelTitle(saved.config.id ?? 0)} · in progress`,
+        run: () => launch(() => start(saved.seed, restoreGame(saved))),
+      });
+    }
+    actions.push({ label: 'New mission', key: saved ? 'N' : 'Enter', run: newMission });
+    hud.menu({ variant: 'title', title: 'Word War', actions });
+  }
+
+  /** The first mission straight away while it's the only one open, else the mission list. */
+  function newMission() {
+    const open = LEVELS.filter((l) => isUnlocked(progress, l.id));
+    if (open.length <= 1) launch(() => start(randomSeed(), undefined, open[0]?.id ?? LEVELS[0].id));
+    else missions(titleMenu);
+  }
+
+  /**
+   * Leave for a mission: the letterbox closes, the menu fades, the camera
+   * pulls back as the sub dives, and the picture fades to black; `begin`
+   * then sets up the mission and its opening shot plays.
+   */
+  function launch(begin: () => void) {
+    setPaused(false);
+    if (!cinematics()) {
+      hud.menu(null);
+      phase = 'start';
+      begin();
+      beginPlay();
+      return;
+    }
+    if (hud.isMenuOpen()) hud.fadeMenu(1);
+    enterCinema('depart');
+    const dp = departParams();
+    view.play(departShot(view.pose(), dp));
+    moveSub(-introParams().depth, dp.sink);
+    cue(departSeconds(dp) + 0.15, () => {
+      phase = 'start';
+      begin();
+      missionStart();
+    });
+  }
+
+  /** Mission start: in from high above the sub as it rises, then round to the default framing, and play. */
+  function missionStart() {
+    if (!cinematics()) return beginPlay();
+    enterCinema('start');
+    const p = introParams();
+    moveSub(-p.depth);
+    moveSub(0, p.surface);
+    view.play(introShot({ x: subFloat.x, z: subFloat.z }, view.home(), p), view.home());
+    const end = introSeconds(p);
+    cue(end - p.barsOut * 0.7, () => hud.cine(false));
+    cue(end, beginPlay);
+  }
+
+  /** A key or tap during the title or the mission start skips ahead. */
+  function skip() {
+    if (phase === 'title') {
+      const tp = titleParams();
+      view.seek(titleSeconds(tp) + tp.menuDelay);
+      titleMenu();
+    } else if (phase === 'start') {
+      moveSub(0, 0.6);
+      view.stop();
+      beginPlay();
+    }
+  }
+  window.addEventListener('keydown', (e) => {
+    if (e.metaKey || e.ctrlKey || e.altKey || e.repeat) return;
+    if ((e.target as HTMLElement | null)?.closest?.('.tp-dfwv, input, textarea')) return;
+    if (phase === 'title' || phase === 'start') {
+      // The key only skips: it mustn't also reach the game (Space would pause it).
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      skip();
+    }
+  });
+
+  // The tuner's "Play" buttons: run a sequence or shot on the spot, whatever the game is doing.
   window.addEventListener('ww:shot', (ev) => {
     const which = (ev as CustomEvent<string>).detail;
-    if (which === 'intro') playIntro();
-    else if (which === 'kill') {
+    if (which === 'title') title();
+    else if (which === 'depart') launch(() => start(game.seed, undefined, game.state.config.id));
+    else if (which === 'intro') missionStart();
+    else if (which === 'kill' || which === 'drone') {
       const p = killParams();
       // Aim at the targeted or any live ship, else at an empty spot ahead of the sub.
       const ship = game.unit(game.state.activeUnitId) ?? game.state.units.find((u) => !u.destroyed && discovered.includes(u.id));
-      const at = ship ? unitMid(ship) : { x: subFloat.x + 6, z: subFloat.z };
-      board.uniforms.torpFrom.value.set(subFloat.x, subFloat.z);
-      board.uniforms.torpTo.value.set(at.x, at.z);
-      torpStart = now + p.lead;
-      torpRun = p.run;
-      view.play(killShot({ x: subFloat.x, z: subFloat.z }, at, ship?.length ?? 4, p));
+      if (ship) {
+        const plan = planKillFor(ship.id, p, which)!;
+        fireAt(unitMid(ship), plan.lead, plan.run);
+        view.play(plan.shot);
+      } else {
+        const at = bowOf({ ...subPose(), half: subHalf + 7 });
+        const plan = planKill(subPose(), at, 4, which === 'drone', p);
+        fireAt(at, plan.lead, plan.run);
+        view.play(plan.shot);
+      }
     }
   });
 
@@ -391,11 +580,11 @@ export async function createController(scene: Scene, board: Board, hulls: Hulls,
   const randomSeed = () => Math.floor(Math.random() * 1e6) + 1;
   const stars = (n: number) => '★'.repeat(n) + '☆'.repeat(3 - n);
   const levelTitle = (id: number) => (id ? `Mission ${String(id).padStart(2, '0')}` : 'Quick game');
-  /** Start a campaign level on a fresh board. */
-  const startLevel = (id: number) => start(randomSeed(), undefined, id);
+  /** Leave for a campaign level on a fresh board. */
+  const startLevel = (id: number) => launch(() => start(randomSeed(), undefined, id));
 
   function pause(reason = 'Paused') {
-    if (ended || isPaused()) return;
+    if (phase !== 'play' || ended || isPaused()) return;
     setPaused(true);
     persist();
     pauseMenu(reason);
@@ -408,7 +597,7 @@ export async function createController(scene: Scene, board: Board, hulls: Hulls,
       subtitle: `${levelTitle(id)}${levelById(id) ? ` · ${levelById(id)!.name}` : ''} · seed ${game.seed}`,
       actions: [
         { label: 'Continue', key: 'Space / Esc', run: resume },
-        { label: 'Restart mission', key: 'R', run: () => start(game.seed, undefined, id) },
+        { label: 'Restart mission', key: 'R', run: () => launch(() => start(game.seed, undefined, id)) },
         { label: 'Missions', key: 'M', run: () => missions(() => pauseMenu(reason)) },
       ],
     });
@@ -422,6 +611,7 @@ export async function createController(scene: Scene, board: Board, hulls: Hulls,
       title: 'MISSIONS',
       subtitle: `${total} of ${LEVELS.length * 3} stars`,
       columns: 2,
+      solid: true,
       primary: here - 1,
       actions: [
         ...LEVELS.map((l) => {
@@ -435,7 +625,7 @@ export async function createController(scene: Scene, board: Board, hulls: Hulls,
             run: () => startLevel(l.id),
           };
         }),
-        { label: 'Quick game', sub: 'Random board, tuner settings', key: 'Q', run: () => start(randomSeed()) },
+        { label: 'Quick game', sub: 'Random board, tuner settings', key: 'Q', run: () => launch(() => start(randomSeed())) },
         { label: 'Back', key: 'Esc', run: back },
       ],
     });
@@ -457,7 +647,7 @@ export async function createController(scene: Scene, board: Board, hulls: Hulls,
       writeProgress(progress);
     }
     const next = levelById(id + 1);
-    const again = () => start(randomSeed(), undefined, id);
+    const again = () => launch(() => start(randomSeed(), undefined, id));
     const actions: MenuAction[] = [];
     if (win && next) actions.push({ label: 'Next mission', key: 'Enter', run: () => startLevel(next.id) });
     actions.push({ label: win ? 'Play again' : 'Try again', key: win && next ? 'R' : 'Enter', run: again });
@@ -482,7 +672,7 @@ export async function createController(scene: Scene, board: Board, hulls: Hulls,
     setPaused(false);
   }
 
-  hud.watchDock((px) => { viewInset.bottom = px; view.refit(); });
+  hud.watchDock((px) => { dockPx = px; viewInset.bottom = -1; applyInset(); });
   hud.onPause(() => pause());
   hud.onCamera({ zoomIn: view.zoomIn, zoomOut: view.zoomOut, rotate: () => view.rotate(1) });
   // Leaving the tab or app pauses the game; progress is already saved.
@@ -491,7 +681,7 @@ export async function createController(scene: Scene, board: Board, hulls: Hulls,
   });
   window.addEventListener('pagehide', persist);
   // The tuner's "Restart mission" applies Gameplay knobs.
-  window.addEventListener('ww:restart', () => start(game.seed, undefined, game.state.config.id));
+  window.addEventListener('ww:restart', () => launch(() => start(game.seed, undefined, game.state.config.id)));
   tune.onAny(['cheat.showShips', 'cheat.showWords'], () => { syncBoard(); syncHud(); });
 
   // ---- Input ---------------------------------------------------------------
@@ -515,9 +705,9 @@ export async function createController(scene: Scene, board: Board, hulls: Hulls,
     },
     pause: () => pause(),
   };
-  installKeyboard(intents, { menuKey: hud.menuKey, menuOpen: hud.isMenuOpen, ended: () => ended, onLetter: hud.flash });
+  installKeyboard(intents, { menuKey: hud.menuKey, menuOpen: hud.isMenuOpen, ended: () => ended || phase !== 'play', onLetter: hud.flash });
   hud.onLetter((letter) => {
-    if (!ended && !hud.isMenuOpen()) intents.letter(letter);
+    if (phase === 'play' && !ended && !hud.isMenuOpen()) intents.letter(letter);
   });
 
   // ---- Frame -----------------------------------------------------------------
@@ -529,7 +719,7 @@ export async function createController(scene: Scene, board: Board, hulls: Hulls,
     // While paused the game clock stands still, but everything is still posed
     // at the frozen time (a restored mission pauses before its first frame).
     if (!isPaused()) {
-      if (!ended) game.tick(dt * 1000);
+      if (phase === 'play' && !ended) game.tick(dt * 1000);
       game.refill(tune.get<boolean>('cheat.infiniteTorpedoes'), tune.get<boolean>('cheat.infiniteBattery'));
       if (Math.floor(game.state.battery) !== lastBattery) {
         lastBattery = Math.floor(game.state.battery);
@@ -538,6 +728,9 @@ export async function createController(scene: Scene, board: Board, hulls: Hulls,
       const due = queue.filter((q) => q.at <= t);
       queue = queue.filter((q) => q.at > t);
       for (const q of due) q.run();
+      const dueCues = cues.filter((q) => q.at <= t);
+      cues = cues.filter((q) => q.at > t);
+      for (const q of dueCues) q.run();
 
       // Sub swings its bow toward the current target.
       const target = fleet.mid(game.state.activeUnitId ?? '');
@@ -550,51 +743,64 @@ export async function createController(scene: Scene, board: Board, hulls: Hulls,
       subFloat.yaw = subHeading;
     }
 
-    // Opening shot, once the game is actually running (not behind a menu).
-    if (introPending && !isPaused() && !hud.isMenuOpen()) {
-      introPending = false;
-      if (cinematics()) {
-        playIntro();
-      } else {
-        surfaceAt = -99;
-      }
-    }
-    // The submarine rises from below the surface (it starts submerged until the shot begins).
-    subFloat.lift = surfaceAt === -99 ? 0 : -surface.depth * (1 - smooth(Math.min(1, Math.max(0, (t - surfaceAt) / surface.seconds))));
+    // The submarine surfaces and dives on cue (title, departure, mission start).
+    subFloat.lift = subLift(t);
 
     board.uniforms.pingAge.value = t - pingStart;
     board.uniforms.pingCenter.value.set(subFloat.x, subFloat.z);
     const run = (t - torpStart) / torpRun;
     board.uniforms.torpT.value = run >= 0 && run <= 1.15 ? Math.min(run, 1) : -1;
+    torpedo.set(torpPath.from, torpPath.to, run >= 0 && run <= 1 ? run : null, t);
 
     const prints: HullFootprint[] = fleet.update(t, dt);
     for (const f of [...scenery.floaters, subFloat]) ride(f, t, dt);
-    const sp = footprint(subFloat);
-    if (sp) prints.push(sp);
+    // A submerged sub makes no foam: it comes as the hull breaks the surface.
+    const sp = footprint(subFloat, wetness(subFloat.lift ?? 0));
+    if (sp && sp.strength! > 0) prints.push(sp);
     hulls.set(prints);
 
+    // A new contact's word shows once the radar has scanned the whole hull in.
+    if (sign) sign.group.visible = !fleet.revealing(signUnit ?? '');
     sign?.update(camera, t);
     labels.update(camera);
     board.faceCamera(azimuthDeg);
   }
 
-  // Resume a saved mission unless the URL asks for a different one; `?level=N` starts that level (if open).
+  // A page load opens on the title sequence and the main menu. `?level=N` or `?seed=` go straight to
+  // that mission (resuming the saved one if it matches); review shots (`?shot`) skip the cinematics.
   const params = new URLSearchParams(location.search);
   const seedParam = Number(params.get('seed')) || 0;
   const levelParam = Number(params.get('level')) || 0;
   const saved = loadSave();
-  if (saved && (!seedParam || seedParam === saved.seed) && (!levelParam || levelParam === saved.config.id)) {
-    start(saved.seed, restoreGame(saved));
-    pause('Mission restored');
-  } else if (levelParam && levelById(levelParam)) {
-    start(seedParam || randomSeed(), undefined, levelParam);
-  } else if (seedParam) {
-    start(seedParam);
+  const resumes = saved && (!seedParam || seedParam === saved.seed) && (!levelParam || levelParam === saved.config.id);
+  if (params.has('shot')) {
+    if (resumes && saved) {
+      start(saved.seed, restoreGame(saved));
+      pause('Mission restored');
+    } else if (levelParam && levelById(levelParam)) {
+      start(seedParam || randomSeed(), undefined, levelParam);
+    } else if (seedParam) {
+      start(seedParam);
+    } else {
+      start(randomSeed(), undefined, currentLevel(progress));
+      setPaused(true);
+      missions(resume);
+    }
+  } else if (seedParam || (levelParam && levelById(levelParam))) {
+    phase = 'start';
+    if (resumes && saved) start(saved.seed, restoreGame(saved));
+    else if (levelParam && levelById(levelParam)) start(seedParam || randomSeed(), undefined, levelParam);
+    else start(seedParam);
+    missionStart();
   } else {
-    // First visit, or nothing in progress: open at the current level, behind the mission list.
-    start(randomSeed(), undefined, currentLevel(progress));
-    setPaused(true);
-    missions(resume);
+    title();
+  }
+  // The URL's mission is used up: a reload opens on the title again.
+  if (seedParam || levelParam) {
+    const url = new URL(location.href);
+    url.searchParams.delete('seed');
+    url.searchParams.delete('level');
+    history.replaceState(null, '', url);
   }
 
   return {

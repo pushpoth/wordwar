@@ -163,3 +163,53 @@ Append-only. Close an entry by changing its status; never delete one.
   ease out; kill: swing in, follow, pull back and circle). A keyframe or timeline editor is not built.
 - **Why:** Knobs cover the "right spot and pace" tuning at little cost. If the user later wants more or different
   phases, the next step is shots as data (a list of timed poses) with the knobs editing that list.
+
+## 2026-10-08 · A title sequence and main menu on every page load
+- **Status:** active
+- **Decision:** Every page load plays the title sequence (fade in high over the sea, descend to the sub surfacing,
+  settle low beside its bow) and shows the main menu (logo, Continue when a mission is saved, New mission) top right
+  over that view. Every mission start, from any menu, goes through the departure (letterbox, pull back, sub dives,
+  fade to black) and the mission-start shot. `?seed=`/`?level=` still go straight to a mission, and are removed from
+  the URL once used, so a reload shows the title again; `start()` no longer writes them back. The title's backdrop
+  board is never saved. Any key or tap skips the title or the mission start.
+- **Why:** The user asked for an intro "for the first load of the game"; read as each load, not only the first visit
+  ever, because the menu is the way into the game. Writing the seed into the URL made every reload skip the title.
+
+## 2026-10-08 · Shots carry their own fades and letterbox; eye-point poses
+- **Status:** active
+- **Decision:** A pose may give an eye point (with the look-at point), and `fade` and `bars` values. Composed shots
+  (title, departure, mission start, drone kill) set exact poses every frame along a Hermite path through keyframes,
+  which moves through the middle keys without stopping; the kill shots keep the eased poses. The camera reports fade
+  and letterbox to `ui/cinema.ts`, which draws them under the HUD.
+- **Why:** The title composition is by screen position (sub on the right half, horizon a third down), which needs an
+  eye point and the lens. Keeping fades in the shot keeps cuts and dips in step with the camera and testable.
+
+## 2026-10-08 · New ships are scanned in by the ping ring, not raised from the deep
+- **Status:** active
+- **Decision:** A newly found ship is placed on the water at the ping and hidden outside a radius that follows the
+  ping ring outward from the sub; inside a 0.9-cell band at the front it shows as green scan lines. This needs a second
+  model material (the shared one plus a per-object reveal radius); ships switch back to plain once revealed. Its word
+  sign shows when the reveal finishes. The camera then turns broadside to the ship, from the sun side unless that
+  means turning more than 120°.
+- **Why:** The user: they are ships, not subs, and the ping should look like it revealed them.
+
+## 2026-10-08 · The drone kill shot is picked by a hash, not the game's RNG
+- **Status:** active
+- **Decision:** About one kill in five (`droneChance`), when the ship is at least 6 cells from the bow, plays the
+  drone shot; which kills is a hash of the seed and the ship's index, so replays match and the game's RNG stream is
+  untouched.
+- **Why:** Presentation must not change the game's random sequence (saves replay through it).
+
+## 2026-10-08 · The ocean reaches 700 cells; the far water takes the sky's horizon colour
+- **Status:** active
+- **Decision:** The ocean's grid keeps its vertex count; the middle 86% covers ±40 cells evenly and the rest stretches
+  to ±700, with the swell fading flat past 28 cells. Past 70 cells the water blends to the sky's reflection map sampled
+  just above the horizon, so the sea meets the sky without a seam. The camera's far plane went from 400 to 1000.
+- **Why:** The title's high view showed the old 90-cell square's edge. The far ring costs fragment work only where
+  it's on screen, which is never in the default board framing.
+
+## 2026-10-08 · Bloom at 15% on desktop, off on phones
+- **Status:** active
+- **Decision:** Bloom strength 0.45 → 0.07; the phone tier turns the pass off.
+- **Why:** The user asked for bloom off unless it could be cut to about 15%. It can; on phones the pass costs GPU time
+  that is better spent on resolution (the iPhone runs at 0.7×).

@@ -71,6 +71,7 @@ export function createSky(scene: Scene, renderer: WebGPURenderer) {
   scene.add(light, light.target);
 
   const moved = new Set<(sun: Vector3) => void>();
+  const envChanged = new Set<(tex: typeof env.texture) => void>();
   let envTimer = 0;
   tune.onAny(['sun.elevation', 'sun.azimuth'], () => {
     sunDirection(sun);
@@ -83,10 +84,16 @@ export function createSky(scene: Scene, renderer: WebGPURenderer) {
       env.dispose();
       env = pmrem.fromScene(envScene, 0.02, 1, 2000);
       scene.environment = env.texture;
+      for (const fn of envChanged) fn(env.texture);
     }, 250);
   });
   tune.on('sun.intensity', (v) => (light.intensity = v as number));
   tune.on('sky.envIntensity', (v) => (scene.environmentIntensity = v as number));
 
-  return { sky, sun, light, setShadowExtent, onSunMove: (fn: (sun: Vector3) => void) => moved.add(fn) };
+  return {
+    sky, sun, light, setShadowExtent, onSunMove: (fn: (sun: Vector3) => void) => moved.add(fn),
+    /** The sky's reflection map, and a hook for when it is re-rendered. */
+    env: () => env.texture,
+    onEnv: (fn: (tex: typeof env.texture) => void) => envChanged.add(fn),
+  };
 }

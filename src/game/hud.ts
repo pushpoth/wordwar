@@ -40,6 +40,10 @@ export type MenuView = {
   columns?: number;
   /** Which button is the highlighted default (first by default). */
   primary?: number;
+  /** `title`: the main menu, top right over the scene with no scrim. */
+  variant?: 'card' | 'title';
+  /** An opaque card rather than a see-through one. */
+  solid?: boolean;
 };
 
 /**
@@ -191,16 +195,23 @@ export function createHud() {
   }
 
   let menuActions: MenuAction[] = [];
+  let leaveTimer = 0;
 
   /** Show a menu card, or hide it with null. */
   function menu(v: MenuView | null) {
+    clearTimeout(leaveTimer);
+    menuEl.classList.remove('leaving');
+    menuEl.style.transitionDuration = '';
+    root.classList.remove('menu-leaving');
     menuActions = v?.actions ?? [];
     root.classList.toggle('menu-open', !!v);
+    root.classList.toggle('title-open', v?.variant === 'title');
     if (!v) return;
-    menuEl.className = `panel menu ${v.tone ?? 'neutral'}`;
+    const title = v.variant === 'title';
+    menuEl.className = `panel menu ${v.tone ?? 'neutral'}${title ? ' title' : ''}${v.solid ? ' solid' : ''}`;
     menuEl.innerHTML = `
       ${LOGO}
-      <h2>${v.title}</h2>
+      ${title ? '<div class="tag">NAVAL WORD WARFARE</div>' : `<h2>${v.title}</h2>`}
       ${v.subtitle ? `<div class="label">${v.subtitle}</div>` : ''}
       ${v.stats ? `<dl>${v.stats.map(([k, val]) => `<dt>${k}</dt><dd>${val}</dd>`).join('')}</dl>` : ''}
       <div class="actions"></div>`;
@@ -216,6 +227,26 @@ export function createHud() {
       box.appendChild(b);
     });
     ((box.querySelectorAll('button')[primary] ?? box.querySelector('button')) as HTMLButtonElement | null)?.focus({ preventScroll: true });
+  }
+
+  /** Fade the open menu out over `seconds`, then close it; its buttons stop working at once. */
+  function fadeMenu(seconds = 1) {
+    menuActions = [];
+    menuEl.querySelectorAll('button').forEach((b) => (b.disabled = true));
+    menuEl.style.transitionDuration = `${seconds}s`;
+    menuEl.classList.add('leaving');
+    root.classList.remove('menu-open');
+    root.classList.add('menu-leaving');
+    leaveTimer = window.setTimeout(() => {
+      menuEl.classList.remove('leaving');
+      menuEl.style.transitionDuration = '';
+      root.classList.remove('menu-leaving', 'title-open');
+    }, seconds * 1000);
+  }
+
+  /** Hide the game's panels (menus stay) while a cinematic plays. */
+  function cine(on: boolean) {
+    root.classList.toggle('cine', on);
   }
 
   /** Route a key to the open menu; returns true if it was handled. */
@@ -278,7 +309,7 @@ export function createHud() {
     root.classList.add('ready');
   }
 
-  return { render, note, banner, menu, menuKey, onPause, onCamera, onLetter, ping, watchDock, flash, ready, isMenuOpen: () => menuActions.length > 0 };
+  return { render, note, banner, menu, fadeMenu, cine, menuKey, onPause, onCamera, onLetter, ping, watchDock, flash, ready, isMenuOpen: () => menuActions.length > 0 };
 }
 
 export type Hud = ReturnType<typeof createHud>;

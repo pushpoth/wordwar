@@ -95,8 +95,11 @@ export function ride(f: Floater, t: number, dt: number) {
   o.rotation.set(u.roll, f.yaw, u.pitch, 'YXZ');
 }
 
+/** How much a hull settled `lift` cells below its waterline touches the surface: 1 afloat, 0 by `depth` under. */
+export const wetness = (lift: number, depth = 0.4) => Math.min(1, Math.max(0, 1 + lift / depth));
+
 /** The water footprint the ocean shader needs for calming and wakes. */
-export function footprint(f: Floater): HullFootprint | null {
+export function footprint(f: Floater, strength = 1): HullFootprint | null {
   if (!f.hull) return null;
-  return { x: f.x, z: f.z, yaw: f.yaw, halfLength: f.hull.halfLength, halfBeam: f.hull.halfBeam, speed: f.speed ?? 0 };
+  return { x: f.x, z: f.z, yaw: f.yaw, halfLength: f.hull.halfLength, halfBeam: f.hull.halfBeam, speed: f.speed ?? 0, strength };
 }

@@ -218,3 +218,48 @@
   .hud .toast.show { transform: none; }
 }
 body.shot .hud { display: none; }
+
+/* Cinematics: letterbox bars and the fade to black (src/ui/cinema.ts), over the scene, under the HUD */
+.cinema { position: fixed; inset: 0; z-index: 2; pointer-events: none; --bars: 0; }
+.cinema .bar { position: absolute; left: 0; right: 0; height: calc(var(--bars) * min(11vh, 14vw)); background: #000; }
+.cinema .bar.top { top: 0; }
+.cinema .bar.bottom { bottom: 0; }
+.cinema .fade { position: absolute; inset: 0; background: #04121c; opacity: 0; }
+
+/* While a cinematic plays, the game's panels step aside (menus stay). */
+.hud .status, .hud .word, .hud .side, .hud .log, .hud .mode, .hud .aux-btn, .hud .kb, .hud .word .head { transition: opacity 0.6s, visibility 0s; }
+.hud.cine .status, .hud.cine .word, .hud.cine .side, .hud.cine .log, .hud.cine .mode, .hud.cine .toast, .hud.cine .aux-btn,
+.hud.cine .kb, .hud.cine .word .head {
+  opacity: 0 !important; visibility: hidden; transition: opacity 0.5s, visibility 0s 0.5s;
+}
+
+/* The title menu: the logo with a button or two centred under it, top left over the scene (the sub sits right), no scrim. */
+.hud.title-open .scrim { opacity: 0; pointer-events: none; }
+.hud .menu.title {
+  left: max(36px, env(safe-area-inset-left)); top: max(32px, env(safe-area-inset-top)); right: auto; transform: none;
+  width: auto; min-width: 260px; text-align: center; background: none; border: none; box-shadow: none;
+  backdrop-filter: none; -webkit-backdrop-filter: none; padding: 0; animation: title-in 1.2s ease-out both;
+}
+/* The trailing letter space is balanced with padding so the word centres over the button. */
+.hud .menu.title .logo { font-size: 66px; letter-spacing: 0.3em; padding-left: 0.3em; margin: 0 0 6px; text-shadow: 0 2px 22px rgba(0, 0, 0, 0.55); }
+.hud .menu.title .tag { font-size: 14px; letter-spacing: 0.3em; padding-left: 0.3em; color: var(--hud-text); opacity: 0.8; text-shadow: 0 1px 8px rgba(0, 0, 0, 0.7); }
+.hud .menu.title .actions { justify-items: center; margin-top: 26px; }
+.hud .menu.title button { min-width: 240px; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); background: rgba(8, 18, 26, 0.55); }
+.hud .menu.title button.primary { background: rgba(242, 179, 61, 0.9); color: #10181e; border-color: #f2b33d; }
+.hud .menu.title button.primary kbd { color: rgba(16, 24, 30, 0.7); }
+.hud .menu.leaving { opacity: 0; transition: opacity 1s ease; animation: none; }
+@keyframes title-in { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+@media (max-width: 760px) and (orientation: portrait), (max-height: 520px) and (orientation: landscape) {
+  .hud .menu.title { top: calc(var(--gy) + 12px); left: calc(var(--gx) + 8px); min-width: 0; }
+  .hud .menu.title .logo { font-size: min(45px, 10.5vw); }
+  .hud .menu.title button { min-width: 200px; }
+}
+
+/* The mission list: a solid card, so the levels read clearly over any scene. */
+.hud .menu.solid { background: #0a1720; backdrop-filter: none; -webkit-backdrop-filter: none; }
+@media (max-height: 520px) and (orientation: landscape) {
+  .hud .menu.title { padding: 0; }
+  .hud .menu.title .logo { display: block; font-size: 39px; }
+}
+/* A menu fading out keeps its place on screen until it has gone. */
+.hud.menu-leaving .menu { display: block; pointer-events: none; }
